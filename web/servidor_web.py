@@ -230,6 +230,10 @@ def _servir_http(conn, ruta):
         _responder(conn, 200, _MIME[".json"], _api_motos())
         return
 
+    if ruta == "/api/avatares":
+        _responder(conn, 200, _MIME[".json"], _api_avatares())
+        return
+
     if ruta.startswith("/img/"):
         _enviar_archivo(conn, _ruta_segura(IMG_DIR, ruta[len("/img/"):]))
         return
@@ -250,6 +254,24 @@ def _api_motos():
         "imagenes": imagenes,
     }
     return json.dumps(payload, ensure_ascii=False).encode("utf-8")
+
+
+def _api_avatares():
+    """Lista (JSON) las imagenes disponibles en imagenes/avatares/.
+
+    Asi el lobby muestra automaticamente cualquier imagen que el usuario ponga
+    en esa carpeta, sin tocar el codigo.
+    """
+    carpeta = os.path.join(IMG_DIR, "avatares")
+    extensiones = (".png", ".jpg", ".jpeg", ".webp", ".gif", ".svg")
+    items = []
+    try:
+        for f in sorted(os.listdir(carpeta)):
+            if os.path.splitext(f)[1].lower() in extensiones:
+                items.append("/img/avatares/" + f)
+    except OSError:
+        pass
+    return json.dumps(items).encode("utf-8")
 
 
 def _ruta_segura(base, relativo):

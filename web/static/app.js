@@ -18,7 +18,7 @@ const EMOJIS = ["😀","😎","😂","😮","😭","🔥","👏","🤔","🏍️
 // ---- Estado global ----
 let MOTOS = {}, ATRIBUTOS = [], VALORES = {}, IMAGENES = {};
 let ws = null;
-let avatarSel = "rojo";
+let avatarSel = null, avatares = [];   // avatarSel = URL de la imagen elegida
 let modoSel = null;          // 'publica' | 'rapida' | 'bot' | 'privada'
 let privAccion = "crear";    // 'crear' | 'unir'
 
@@ -58,6 +58,67 @@ const sfx = {
   emoji: ()=>beep(880,0.08,"sine",0.05),
 };
 
+// Ruido filtrado (para fuego, aplausos...).
+function noise(dur, vol, tipoFiltro, freq){
+  const c = ac(); if(!c) return;
+  const n = Math.max(1, Math.floor(c.sampleRate*dur));
+  const buf = c.createBuffer(1, n, c.sampleRate);
+  const d = buf.getChannelData(0);
+  for(let i=0;i<n;i++) d[i] = Math.random()*2-1;
+  const src = c.createBufferSource(); src.buffer = buf;
+  const f = c.createBiquadFilter(); f.type = tipoFiltro||"highpass"; f.frequency.value = freq||1000;
+  const g = c.createGain();
+  src.connect(f); f.connect(g); g.connect(c.destination);
+  const now = c.currentTime;
+  g.gain.setValueAtTime(vol||0.1, now);
+  g.gain.exponentialRampToValueAtTime(0.0001, now+dur);
+  src.start(now); src.stop(now+dur);
+}
+// Tono que se desliza de f1 a f2 (sorpresa, llanto...).
+function glide(f1, f2, dur, tipo, vol){
+  const c = ac(); if(!c) return;
+  const o = c.createOscillator(), g = c.createGain();
+  o.type = tipo||"sine";
+  const now = c.currentTime;
+  o.frequency.setValueAtTime(f1, now);
+  o.frequency.exponentialRampToValueAtTime(Math.max(1,f2), now+dur);
+  g.gain.setValueAtTime(vol||0.07, now);
+  g.gain.exponentialRampToValueAtTime(0.0001, now+dur);
+  o.connect(g); g.connect(c.destination);
+  o.start(now); o.stop(now+dur);
+}
+// Rugido de motor para la moto.
+function revMoto(){
+  const c = ac(); if(!c) return;
+  const o = c.createOscillator(), g = c.createGain();
+  o.type = "sawtooth";
+  const now = c.currentTime;
+  o.frequency.setValueAtTime(60, now);
+  o.frequency.linearRampToValueAtTime(230, now+0.25);
+  o.frequency.linearRampToValueAtTime(85, now+0.6);
+  g.gain.setValueAtTime(0.09, now);
+  g.gain.exponentialRampToValueAtTime(0.0001, now+0.6);
+  o.connect(g); g.connect(c.destination);
+  o.start(now); o.stop(now+0.62);
+  noise(0.6, 0.04, "lowpass", 420);
+}
+// Cada emoji suena distinto y "relacionado".
+function playEmojiSound(e){
+  switch(e){
+    case "😀": beep(660,0.12,"sine",0.07); setTimeout(()=>beep(880,0.14,"sine",0.07),110); break;
+    case "😎": beep(330,0.18,"sawtooth",0.05); setTimeout(()=>beep(440,0.24,"sawtooth",0.05),130); break;
+    case "😂": [0,95,190,290].forEach((d,i)=>setTimeout(()=>beep(i%2?760:600,0.07,"square",0.05),d)); break;
+    case "😮": glide(400,1150,0.3,"sine",0.07); break;
+    case "😭": glide(720,190,0.6,"sawtooth",0.07); break;
+    case "🔥": noise(0.5,0.12,"lowpass",900); break;
+    case "👏": [0,95,200,310].forEach(d=>setTimeout(()=>noise(0.05,0.18,"highpass",1600),d)); break;
+    case "🤔": beep(210,0.45,"sine",0.06); break;
+    case "🏍️": revMoto(); break;
+    case "💀": glide(300,85,0.7,"sawtooth",0.07); break;
+    default: beep(880,0.08,"sine",0.05);
+  }
+}
+
 /* ============================================================
    Arranque
    ============================================================ */
@@ -65,8 +126,13 @@ window.addEventListener("DOMContentLoaded", async () => {
   aplicarIdioma();
   $("langBtn").onclick = () => { LANG = (LANG==="es")?"en":"es"; localStorage.setItem("lang",LANG); aplicarIdioma(); reconstruirDinamico(); };
 
-  construirAvatares();
+  await construirAvatares();
   construirEmojis();
+
+  // Botones del modal de confirmación (con estilo de la página)
+  $("modalOk").onclick = ()=>{ const f=_modalOnOk; cerrarModal(); if(f) f(); };
+  $("modalCancel").onclick = cerrarModal;
+  $("modal").onclick = (e)=>{ if(e.target.id==="modal") cerrarModal(); };
 
   try {
     const r = await fetch("/api/motos");
@@ -121,14 +187,26 @@ function construirHeroArt(){
 /* ============================================================
    Lobby
    ============================================================ */
-function construirAvatares(){
+async function construirAvatares(){
   const cont = $("avatars");
-  AVATARES.forEach((c,i)=>{
+  cont.innerHTML = "";
+  // Carga la lista de avatares desde el servidor (cualquier imagen que el
+  // usuario ponga en imagenes/avatares/ aparece aqui automaticamente).
+  let lista = [];
+  try { lista = await (await fetch("/api/avatares")).json(); } catch(e){}
+  if(!lista || !lista.length){
+    lista = AVATARES.map(c => `/img/avatares/avatar_${c}.png`);  // respaldo
+  }
+  avatares = lista;
+  lista.forEach((url,i)=>{
     const img = document.createElement("img");
-    img.src = `/img/avatares/avatar_${c}.png`;
-    img.alt = c;
-    if(i===0) img.classList.add("sel");
-    img.onclick = ()=>{ document.querySelectorAll("#avatars img").forEach(x=>x.classList.remove("sel")); img.classList.add("sel"); avatarSel=c; sfx.click(); };
+    img.src = url;
+    img.alt = "avatar";
+    if(i===0){ img.classList.add("sel"); avatarSel = url; }
+    img.onclick = ()=>{
+      document.querySelectorAll("#avatars img").forEach(x=>x.classList.remove("sel"));
+      img.classList.add("sel"); avatarSel = url; sfx.click();
+    };
     cont.appendChild(img);
   });
 }
@@ -245,7 +323,7 @@ function onInicio(msg){
   // Cabecera
   $("myName").textContent = $("nombre").value.trim() || "Tú";
   $("rivalName").textContent = rivalNombre;
-  $("myAv").src = `/img/avatares/avatar_${avatarSel}.png`;
+  $("myAv").src = avatarSel || "";
   pintarMarcador(msg.marcador);
 
   // Moto secreta
@@ -301,7 +379,7 @@ function onEmoji(msg){
   f.className = "emoji-float";
   f.textContent = msg.emoji;
   document.body.appendChild(f);
-  sfx.emoji();
+  playEmojiSound(msg.emoji);
   setTimeout(()=>f.remove(), 1700);
 }
 
@@ -326,7 +404,7 @@ function clicCarta(n, c){
   if(modoAdivinar){
     if(!esMiTurno){ toast(t("toast_not_turn")); return; }
     const txt = t("guess_confirm").replace("{m}", n);
-    if(confirm(txt)){ enviar({tipo:T.ADIVINAR, moto:n}); toggleGuess(); }
+    confirmar(txt, ()=>{ enviar({tipo:T.ADIVINAR, moto:n}); toggleGuess(); }, "🎯");
     return;
   }
   // Descarte manual (tachar/destachar)
@@ -391,10 +469,10 @@ function preguntar(){
   enviar({tipo:T.PREGUNTA, atributo:$("selAtributo").value, valor:$("selValor").value});
 }
 function rendirse(){
-  if(confirm(LANG==="es"?"¿Seguro que quieres rendirte?":"Are you sure you want to give up?"))
-    enviar({tipo:T.RENDIRSE});
+  confirmar(LANG==="es"?"¿Seguro que quieres rendirte?":"Are you sure you want to give up?",
+            ()=>enviar({tipo:T.RENDIRSE}), "🏳️");
 }
-function enviarEmoji(e){ enviar({tipo:T.EMOJI, emoji:e}); sfx.emoji(); }
+function enviarEmoji(e){ enviar({tipo:T.EMOJI, emoji:e}); playEmojiSound(e); }
 function revancha(){
   enviar({tipo:T.REVANCHA});
   const bR = $("btnRevancha");
@@ -469,6 +547,18 @@ function agregarLog(msg, mia){
 /* ============================================================
    Utilidades de UI
    ============================================================ */
+// Modal de confirmación con el estilo de la página (sustituye a window.confirm).
+let _modalOnOk = null;
+function confirmar(texto, onOk, icono){
+  $("modalText").textContent = texto;
+  $("modalIcon").textContent = icono || "❓";
+  $("modalOk").textContent = (LANG==="es") ? "Confirmar" : "Confirm";
+  $("modalCancel").textContent = (LANG==="es") ? "Cancelar" : "Cancel";
+  _modalOnOk = onOk;
+  $("modal").classList.add("show");
+}
+function cerrarModal(){ $("modal").classList.remove("show"); _modalOnOk = null; }
+
 function mostrar(idScreen){
   document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
   $(idScreen).classList.add("active");
