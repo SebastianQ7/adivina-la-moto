@@ -1,0 +1,10 @@
+# Configuracion de despliegue en Render (https://render.com)
+# Crea un "Web Service" gratis que corre el servidor web con hilos y sockets.
+services:
+  - type: web
+    name: adivina-la-moto
+    runtime: python
+    plan: free
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "python web/servidor_web.py"
+    autoDeploy: true

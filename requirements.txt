@@ -1,0 +1,3 @@
+# "Adivina la Moto" usa SOLO la biblioteca estandar de Python.
+# No hay dependencias externas; este archivo existe para que el host
+# (Render) detecte el proyecto como Python.

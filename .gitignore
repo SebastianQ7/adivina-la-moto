@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Tests de desarrollo del modo web (no son parte del despliegue)
+web/test_ws.py
+web/test_ws2.py
+
+# Sistema operativo / OneDrive
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editores
+.vscode/
+.idea/

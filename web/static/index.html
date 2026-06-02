@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Adivina la Moto</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8F%8D%EF%B8%8F%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+
+<!-- ============ LANDING ============ -->
+<div id="landing" class="screen active">
+  <nav class="nav">
+    <div class="wrap">
+      <div class="brand"><span class="mark">🏍️</span> Adivina la Moto</div>
+      <div class="nav-links">
+        <a href="#como" data-i18n="nav_how">Cómo se juega</a>
+        <a href="#reglas" data-i18n="nav_rules">Reglas</a>
+        <a href="#galeria" data-i18n="nav_gallery">Galería</a>
+        <button class="lang-toggle" id="langBtn">EN</button>
+        <button class="btn btn-primary" onclick="irLobby()" data-i18n="nav_play">Jugar</button>
+      </div>
+    </div>
+  </nav>
+
+  <header class="hero">
+    <div class="wrap hero-grid">
+      <div>
+        <span class="kicker" data-i18n="hero_kicker">Duelo de deducción · 24 motos</span>
+        <h1><span data-i18n="hero_t1">Haz preguntas.</span><br><span class="out" data-i18n="hero_t2">Descarta.</span><br><span data-i18n="hero_t3">Adivina.</span></h1>
+        <p class="lead" data-i18n="hero_lead">El clásico "¿Quién es quién?" pero con 24 motos icónicas. Descubre la moto secreta de tu rival antes de que descubra la tuya.</p>
+        <div class="hero-cta">
+          <button class="btn btn-primary btn-lg" onclick="irLobby()" data-i18n="hero_cta1">Jugar ahora</button>
+          <a href="#como" class="btn btn-ghost btn-lg" data-i18n="hero_cta2">Cómo se juega</a>
+        </div>
+        <div class="hero-tags">
+          <span class="tag" data-i18n="tag1">👥 2 jugadores</span>
+          <span class="tag" data-i18n="tag2">🤖 vs Bot</span>
+          <span class="tag" data-i18n="tag3">⚡ Partida rápida</span>
+          <span class="tag" data-i18n="tag4">🔒 Salas privadas + QR</span>
+        </div>
+      </div>
+      <div class="hero-art" id="heroArt"></div>
+    </div>
+  </header>
+
+  <section class="block" id="como">
+    <div class="wrap">
+      <div class="sec-head">
+        <span class="kicker" data-i18n="how_kicker">El juego en 4 pasos</span>
+        <h2 data-i18n="how_title">Cómo se juega</h2>
+        <p data-i18n="how_sub">Ambos reciben el mismo tablero de 24 motos y una moto secreta distinta. Por turnos, preguntan y descartan hasta adivinar.</p>
+      </div>
+      <div class="steps">
+        <div class="step"><span class="num">1</span><h3 data-i18n="s1t">Te toca una moto</h3><p data-i18n="s1p">El servidor te asigna en secreto una moto. Tu rival debe adivinarla… y tú la suya.</p></div>
+        <div class="step"><span class="num">2</span><h3 data-i18n="s2t">Pregunta sí/no</h3><p data-i18n="s2p">En tu turno preguntas por un atributo: "¿es japonesa?", "¿es deportiva?". Responde SÍ o NO.</p></div>
+        <div class="step"><span class="num">3</span><h3 data-i18n="s3t">Descarta motos</h3><p data-i18n="s3p">Según la respuesta, el tablero tacha solo las motos imposibles. Tú también puedes tachar a mano.</p></div>
+        <div class="step"><span class="num">4</span><h3 data-i18n="s4t">¡Adivina!</h3><p data-i18n="s4p">Cuando creas saberla, adivina. Si aciertas ganas; si fallas, pierdes al instante.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block" id="reglas">
+    <div class="wrap">
+      <div class="sec-head">
+        <span class="kicker" data-i18n="rules_kicker">Lo que debes saber</span>
+        <h2 data-i18n="rules_title">Reglas</h2>
+      </div>
+      <div class="rules">
+        <div class="rule"><span class="ic">🎯</span><div><b data-i18n="r1t">Turnos alternados</b><span data-i18n="r1p">Solo puedes preguntar o adivinar cuando es tu turno. El servidor lo valida.</span></div></div>
+        <div class="rule"><span class="ic">❓</span><div><b data-i18n="r2t">Una acción por turno</b><span data-i18n="r2p">Haces una pregunta (y pasas el turno) o intentas adivinar.</span></div></div>
+        <div class="rule"><span class="ic">💀</span><div><b data-i18n="r3t">Fallar = perder</b><span data-i18n="r3p">Si adivinas mal, pierdes la ronda de inmediato. Adivina con cuidado.</span></div></div>
+        <div class="rule"><span class="ic">⏱️</span><div><b data-i18n="r4t">Modo rápido</b><span data-i18n="r4p">Con reloj: 30s por turno. Si se acaba, pierdes el turno (no la partida).</span></div></div>
+        <div class="rule"><span class="ic">🏳️</span><div><b data-i18n="r5t">Rendirse</b><span data-i18n="r5p">Puedes rendirte cuando quieras; el rival gana la ronda.</span></div></div>
+        <div class="rule"><span class="ic">🏆</span><div><b data-i18n="r6t">Marcador</b><span data-i18n="r6p">Se llevan las rondas ganadas durante la sesión. Hay revancha al terminar.</span></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block" id="galeria">
+    <div class="wrap">
+      <div class="sec-head">
+        <span class="kicker" data-i18n="gal_kicker">El tablero completo</span>
+        <h2 data-i18n="gal_title">Las 24 motos</h2>
+        <p data-i18n="gal_sub">Cada una con su origen, estilo, cilindrada, era, cilindros, refrigeración y si salió en el cine.</p>
+      </div>
+      <div class="gallery" id="gallery"></div>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="wrap">Adivina la Moto · Proyecto de Programación Distribuida y Paralela · Hilos &amp; Sockets</div>
+  </footer>
+</div>
+
+<!-- ============ LOBBY ============ -->
+<div id="lobby" class="screen">
+  <div class="center-screen">
+    <div class="panel">
+      <span class="kicker" data-i18n="lobby_kicker">Prepárate</span>
+      <h2 data-i18n="lobby_title">Crea tu jugador</h2>
+      <p class="sub" data-i18n="lobby_sub">Elige un nombre, un avatar y cómo quieres jugar.</p>
+
+      <div class="field">
+        <label data-i18n="lobby_name">Tu nombre</label>
+        <input class="input" id="nombre" maxlength="20" placeholder="Ej: Sebas" autocomplete="off">
+      </div>
+
+      <div class="field">
+        <label data-i18n="lobby_avatar">Tu avatar</label>
+        <div class="avatars" id="avatars"></div>
+      </div>
+
+      <div class="field">
+        <label data-i18n="lobby_mode">Modo de juego</label>
+        <div class="modes">
+          <button class="mode" data-modo="publica" onclick="elegirModo('publica', this)">
+            <span class="ic">🌐</span><div><b data-i18n="m_pub_t">Partida pública</b><span data-i18n="m_pub_s">Te emparejamos con quien busque rival.</span></div>
+          </button>
+          <button class="mode" data-modo="rapida" onclick="elegirModo('rapida', this)">
+            <span class="ic">⚡</span><div><b data-i18n="m_fast_t">Partida rápida</b><span data-i18n="m_fast_s">Pública pero con reloj de 30s por turno.</span></div>
+          </button>
+          <button class="mode" data-modo="bot" onclick="elegirModo('bot', this)">
+            <span class="ic">🤖</span><div><b data-i18n="m_bot_t">Contra el Bot</b><span data-i18n="m_bot_s">Juega solo contra la máquina.</span></div>
+          </button>
+          <button class="mode" data-modo="privada" onclick="elegirModo('privada', this)">
+            <span class="ic">🔒</span><div><b data-i18n="m_priv_t">Partida privada</b><span data-i18n="m_priv_s">Con código y QR para tu amigo.</span></div>
+          </button>
+        </div>
+
+        <!-- Sub-panel privada -->
+        <div class="sub-panel" id="privPanel">
+          <div class="segmented">
+            <button id="segCrear" class="sel" onclick="setPriv('crear')" data-i18n="priv_create">Crear sala</button>
+            <button id="segUnir" onclick="setPriv('unir')" data-i18n="priv_join">Unirme</button>
+          </div>
+          <div class="field" style="margin-bottom:14px">
+            <label id="codeLabel" data-i18n="priv_code">Código de la sala</label>
+            <input class="input" id="codigo" maxlength="10" placeholder="Ej: MOTO24" style="text-transform:uppercase" autocomplete="off">
+          </div>
+          <div class="switch-row" id="rapidaRow">
+            <div class="txt"><b data-i18n="priv_fast_t">Modo rápido</b><span data-i18n="priv_fast_s">Reloj de 30s por turno</span></div>
+            <label class="switch"><input type="checkbox" id="rapidaChk"><span class="slider"></span></label>
+          </div>
+        </div>
+      </div>
+
+      <div class="err-msg" id="lobbyErr"></div>
+      <button class="btn btn-primary btn-lg" id="startBtn" style="width:100%;justify-content:center" onclick="comenzar()" data-i18n="lobby_start">Empezar</button>
+      <div style="text-align:center;margin-top:14px"><a href="#" onclick="volverLanding();return false" style="color:var(--muted);font-size:.88rem" data-i18n="lobby_back">← Volver al inicio</a></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ ESPERANDO ============ -->
+<div id="esperando" class="screen">
+  <div class="center-screen">
+    <div class="panel waiting">
+      <div class="spinner"></div>
+      <h2 id="waitTitle" data-i18n="wait_title">Buscando rival…</h2>
+      <p class="sub" id="waitSub" data-i18n="wait_sub">Te emparejaremos en cuanto otro jugador entre.</p>
+      <div id="privateInfo" class="hidden">
+        <div class="code-box">
+          <div class="lbl" data-i18n="wait_code">Código de la sala</div>
+          <div class="code" id="waitCode">—</div>
+        </div>
+        <div class="qr-wrap"><img id="qrImg" alt="QR"></div>
+        <div class="share-link" id="shareLink"></div>
+      </div>
+      <button class="btn btn-ghost" style="margin-top:18px" onclick="cancelarEspera()" data-i18n="wait_cancel">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ JUEGO ============ -->
+<div id="juego" class="screen game">
+  <div class="game-bar">
+    <div class="wrap">
+      <div class="scoreboard">
+        <div class="who me"><img class="av" id="myAv"><span class="nm" id="myName">Tú</span></div>
+        <span class="score-num" id="myScore">0</span>
+        <span class="vs">VS</span>
+        <span class="score-num" id="rivalScore">0</span>
+        <div class="who"><span class="nm" id="rivalName">Rival</span></div>
+      </div>
+      <div class="turn-pill">
+        <span class="clock hidden" id="clock">30</span>
+        <span class="pill" id="turnPill">—</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="wrap game-layout">
+    <div>
+      <div class="board" id="board"></div>
+    </div>
+    <aside class="side">
+      <div class="box">
+        <h3 data-i18n="g_secret">Tu moto secreta</h3>
+        <div style="display:flex;align-items:center;gap:12px">
+          <img id="secretImg" style="width:64px;height:48px;object-fit:contain">
+          <b id="secretName" style="font-family:var(--font-display)">—</b>
+        </div>
+      </div>
+
+      <div class="box">
+        <h3 data-i18n="g_ask">Preguntar</h3>
+        <div class="select-row">
+          <select class="input" id="selAtributo"></select>
+          <select class="input" id="selValor"></select>
+        </div>
+        <button class="btn btn-primary" id="btnPreguntar" onclick="preguntar()" data-i18n="g_ask_btn">Preguntar</button>
+        <button class="btn btn-soft" id="btnAdivinar" onclick="toggleGuess()" data-i18n="g_guess_btn">🎯 Adivinar una moto</button>
+        <button class="btn btn-danger" onclick="rendirse()" data-i18n="g_giveup">🏳️ Rendirme</button>
+      </div>
+
+      <div class="box counter">
+        <div class="big" id="posibles">24</div>
+        <div class="lbl" data-i18n="g_left">motos posibles</div>
+      </div>
+
+      <div class="box">
+        <h3 data-i18n="g_react">Reaccionar</h3>
+        <div class="emoji-bar" id="emojiBar"></div>
+      </div>
+
+      <div class="box">
+        <h3 data-i18n="g_history">Historial</h3>
+        <div class="log" id="log"></div>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<!-- ============ FIN ============ -->
+<div id="fin" class="screen">
+  <div class="center-screen">
+    <div class="panel result-card">
+      <div class="result-emoji" id="finEmoji">🏁</div>
+      <h2 id="finTitle">—</h2>
+      <p class="sub" id="finMsg"></p>
+      <div class="reveal">
+        <div class="lbl kicker" data-i18n="fin_reveal">La moto del rival era</div>
+        <img id="finImg"><div><b id="finMoto" style="font-family:var(--font-display)"></b></div>
+      </div>
+      <div class="score-final" id="finScore"></div>
+      <div class="fin-actions">
+        <button class="btn btn-primary btn-lg" id="btnRevancha" onclick="revancha()" data-i18n="fin_rematch">Revancha</button>
+        <button class="btn btn-ghost btn-lg" onclick="salirAlInicio()" data-i18n="fin_exit">Salir</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="/i18n.js"></script>
+<script src="/app.js"></script>
+</body>
+</html>

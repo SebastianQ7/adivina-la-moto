@@ -1,0 +1,38 @@
+CARPETA DE IMAGENES - Adivina Quien (Motos)
+============================================
+
+Coloca aqui las 24 fotos de las motos, en formato PNG, con EXACTAMENTE
+estos nombres de archivo (todo en minuscula, separado por guion bajo):
+
+ 1. honda_cbr_600rr.png
+ 2. kawasaki_ninja_h2.png
+ 3. yamaha_yzf_r1.png
+ 4. suzuki_hayabusa.png
+ 5. harley_davidson_fat_boy.png
+ 6. harley_davidson_sportster.png
+ 7. indian_chief.png
+ 8. harley_davidson_road_king.png
+ 9. ducati_panigale_v4.png
+10. ducati_monster.png
+11. aprilia_rsv4.png
+12. ducati_multistrada.png
+13. triumph_bonneville.png
+14. triumph_speed_triple.png
+15. triumph_rocket_3.png
+16. triumph_tiger.png
+17. bmw_r_1250_gs.png
+18. bmw_s1000rr.png
+19. bmw_r_ninet.png
+20. bmw_k_1600.png
+21. ktm_1290_super_duke.png
+22. ktm_1290_super_adventure.png
+23. ktm_rc_390.png
+24. ktm_690_enduro.png
+
+RECOMENDACIONES
+- Formato: PNG (Tkinter no lee JPG sin librerias externas).
+- Tamano sugerido: 150 x 100 px (si son mas grandes, el juego las reduce
+  automaticamente por factores enteros; lo ideal es ya recortarlas a esa
+  proporcion para que se vean bien).
+- Si falta alguna imagen, el juego NO se rompe: muestra una carta de color
+  con el nombre de la moto como respaldo.
