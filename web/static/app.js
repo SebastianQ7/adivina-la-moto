@@ -13,7 +13,7 @@ const T = {
 };
 
 const AVATARES = ["rojo","azul","verde","morado","dorado","naranja","cyan","rosa"];
-const EMOJIS = ["😀","😎","😂","😮","😭","🔥","👏","🤔","🏍️","💀"];
+const EMOJIS = ["😀","😎","😂","😮","😭","🔥","👏","🤔","⚽","💀"];
 
 // ---- Estado global ----
 let MOTOS = {}, ATRIBUTOS = [], VALORES = {}, IMAGENES = {};
@@ -113,7 +113,7 @@ function playEmojiSound(e){
     case "🔥": noise(0.5,0.12,"lowpass",900); break;
     case "👏": [0,95,200,310].forEach(d=>setTimeout(()=>noise(0.05,0.18,"highpass",1600),d)); break;
     case "🤔": beep(210,0.45,"sine",0.06); break;
-    case "🏍️": revMoto(); break;
+    case "⚽": beep(2000,0.07,"square",0.06); setTimeout(()=>beep(2500,0.09,"square",0.06),80); break;
     case "💀": glide(300,85,0.7,"sawtooth",0.07); break;
     default: beep(880,0.08,"sine",0.05);
   }
@@ -168,7 +168,7 @@ function construirGaleria(){
     const el = document.createElement("div");
     el.className = "moto-card";
     el.innerHTML = `<div class="ph"><img src="${IMAGENES[n]}" alt="${n}" loading="lazy"></div>
-      <div class="meta"><b>${n}</b><span>${tVal(m.origen)} · ${tVal(m.estilo)}</span></div>`;
+      <div class="meta"><b>${n}</b><span>${tVal(m[ATRIBUTOS[0]])} · ${tVal(m[ATRIBUTOS[1]])}</span></div>`;
     g.appendChild(el);
   });
 }
@@ -405,7 +405,7 @@ function clicCarta(n, c){
     if(!esMiTurno){ toast(t("toast_not_turn")); return; }
     confirmar({
       icono: "🎯",
-      titulo: (LANG==="es") ? "¿Adivinar esta moto?" : "Guess this bike?",
+      titulo: (LANG==="es") ? "¿Adivinar este jugador?" : "Guess this player?",
       texto: (LANG==="es") ? "Si fallas, pierdes la ronda al instante." : "If you're wrong, you lose the round instantly.",
       moto: n,
       okText: (LANG==="es") ? "Sí, adivinar" : "Yes, guess",

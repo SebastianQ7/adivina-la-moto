@@ -1,267 +1,148 @@
 # -*- coding: utf-8 -*-
 """
-Base de datos de las 24 motos del tablero "Adivina Quién - Motos".
+Base de datos de los 24 jugadores del tablero "Adivina el Crack".
 
-Cada moto es una entrada del diccionario `motos`, con 7 atributos basados
-en datos reales del modelo:
+NOTA: por compatibilidad con el resto del proyecto (server.py, salas.py, bot.py,
+logica.py, gui_client.py) este modulo se sigue llamando `motos.py` y el
+diccionario se sigue llamando `motos`; solo cambio el CONTENIDO al tema futbol.
+El motor del juego es generico: no sabe si son motos o jugadores.
 
-    origen        -> japonesa / americana / italiana / inglesa / alemana / austriaca
-    estilo        -> deportiva / naked / cruiser / touring / trail / enduro
-    cilindrada    -> baja (<500cc) / media (500-999cc) / alta (>=1000cc)
-    era           -> clasica_pre1990 / noventas / moderna_post2000
-    cilindros     -> 1 / 2 / 3 / 4_o_mas
-    refrigeracion -> aire / liquida
-    famosa_en_cine-> si / no
+Cada jugador tiene 7 atributos categoricos:
 
-La 'era' se basa en el año de debut del modelo. La 'cilindrada' usa el
-cilindraje del modelo de referencia (sub-litro = media, litro o mas = alta).
+    posicion        -> portero / defensa / mediocampista / delantero
+    confederacion   -> uefa / conmebol
+    pie             -> derecho / izquierdo
+    era             -> leyenda / dosmil / actual
+    gano_mundial    -> si / no
+    gano_balon_oro  -> si / no
+    liga            -> laliga / seriea / bundesliga / premier / ligue1 / otra
+
+La 'liga' es la mas representativa de su carrera; la 'era' es aproximada
+(leyenda = carrera principalmente antes de ~1995; dosmil = pico ~1995-2010;
+actual = pico 2010 en adelante).
 """
 
 motos = {
-    # ----------------------- JAPONESAS -----------------------
-    "Honda CBR 600RR": {
-        "origen": "japonesa",
-        "estilo": "deportiva",
-        "cilindrada": "media",          # 599 cc
-        "era": "moderna_post2000",      # 2003
-        "cilindros": "4_o_mas",         # inline-4
-        "refrigeracion": "liquida",
-        "famosa_en_cine": "no",
+    # ----------------------- PORTEROS -----------------------
+    "Gianluigi Buffon": {
+        "posicion": "portero", "confederacion": "uefa", "pie": "derecho",
+        "era": "dosmil", "gano_mundial": "si", "gano_balon_oro": "no", "liga": "seriea",
     },
-    "Kawasaki Ninja H2": {
-        "origen": "japonesa",
-        "estilo": "deportiva",
-        "cilindrada": "media",          # 998 cc (sobrealimentada)
-        "era": "moderna_post2000",      # 2015
-        "cilindros": "4_o_mas",
-        "refrigeracion": "liquida",
-        "famosa_en_cine": "no",
+    "Iker Casillas": {
+        "posicion": "portero", "confederacion": "uefa", "pie": "derecho",
+        "era": "actual", "gano_mundial": "si", "gano_balon_oro": "no", "liga": "laliga",
     },
-    "Yamaha YZF-R1": {
-        "origen": "japonesa",
-        "estilo": "deportiva",
-        "cilindrada": "media",          # 998 cc
-        "era": "noventas",              # 1998
-        "cilindros": "4_o_mas",
-        "refrigeracion": "liquida",
-        "famosa_en_cine": "si",         # Biker Boyz, Torque
-    },
-    "Suzuki Hayabusa": {
-        "origen": "japonesa",
-        "estilo": "deportiva",
-        "cilindrada": "alta",           # 1340 cc
-        "era": "noventas",              # 1999
-        "cilindros": "4_o_mas",
-        "refrigeracion": "liquida",
-        "famosa_en_cine": "si",         # Dhoom, Torque
+    "Manuel Neuer": {
+        "posicion": "portero", "confederacion": "uefa", "pie": "derecho",
+        "era": "actual", "gano_mundial": "si", "gano_balon_oro": "no", "liga": "bundesliga",
     },
 
-    # ----------------------- AMERICANAS -----------------------
-    "Harley-Davidson Fat Boy": {
-        "origen": "americana",
-        "estilo": "cruiser",
-        "cilindrada": "alta",           # ~1745 cc
-        "era": "noventas",              # 1990
-        "cilindros": "2",               # V-twin
-        "refrigeracion": "aire",
-        "famosa_en_cine": "si",         # Terminator 2
+    # ----------------------- DEFENSAS -----------------------
+    "Sergio Ramos": {
+        "posicion": "defensa", "confederacion": "uefa", "pie": "derecho",
+        "era": "actual", "gano_mundial": "si", "gano_balon_oro": "no", "liga": "laliga",
     },
-    "Harley-Davidson Sportster": {
-        "origen": "americana",
-        "estilo": "cruiser",
-        "cilindrada": "media",          # 883 cc
-        "era": "clasica_pre1990",       # 1957
-        "cilindros": "2",
-        "refrigeracion": "aire",
-        "famosa_en_cine": "no",
+    "Paolo Maldini": {
+        "posicion": "defensa", "confederacion": "uefa", "pie": "izquierdo",
+        "era": "leyenda", "gano_mundial": "no", "gano_balon_oro": "no", "liga": "seriea",
     },
-    "Indian Chief": {
-        "origen": "americana",
-        "estilo": "cruiser",
-        "cilindrada": "alta",           # ~1811 cc
-        "era": "clasica_pre1990",       # 1922
-        "cilindros": "2",
-        "refrigeracion": "aire",
-        "famosa_en_cine": "no",
+    "Franz Beckenbauer": {
+        "posicion": "defensa", "confederacion": "uefa", "pie": "derecho",
+        "era": "leyenda", "gano_mundial": "si", "gano_balon_oro": "si", "liga": "bundesliga",
     },
-    "Harley-Davidson Road King": {
-        "origen": "americana",
-        "estilo": "touring",
-        "cilindrada": "alta",           # ~1745 cc
-        "era": "noventas",              # 1994
-        "cilindros": "2",
-        "refrigeracion": "aire",
-        "famosa_en_cine": "no",
+    "Roberto Carlos": {
+        "posicion": "defensa", "confederacion": "conmebol", "pie": "izquierdo",
+        "era": "dosmil", "gano_mundial": "si", "gano_balon_oro": "no", "liga": "laliga",
+    },
+    "Fabio Cannavaro": {
+        "posicion": "defensa", "confederacion": "uefa", "pie": "derecho",
+        "era": "dosmil", "gano_mundial": "si", "gano_balon_oro": "si", "liga": "seriea",
     },
 
-    # ----------------------- ITALIANAS -----------------------
-    "Ducati Panigale V4": {
-        "origen": "italiana",
-        "estilo": "deportiva",
-        "cilindrada": "alta",           # 1103 cc
-        "era": "moderna_post2000",      # 2018
-        "cilindros": "4_o_mas",         # V4
-        "refrigeracion": "liquida",
-        "famosa_en_cine": "no",
+    # ----------------------- MEDIOCAMPISTAS -----------------------
+    "Zinedine Zidane": {
+        "posicion": "mediocampista", "confederacion": "uefa", "pie": "derecho",
+        "era": "dosmil", "gano_mundial": "si", "gano_balon_oro": "si", "liga": "laliga",
     },
-    "Ducati Monster": {
-        "origen": "italiana",
-        "estilo": "naked",
-        "cilindrada": "media",          # 937 cc
-        "era": "moderna_post2000",      # linaje 1993, modelo actual
-        "cilindros": "2",               # L-twin
-        "refrigeracion": "liquida",
-        "famosa_en_cine": "no",
+    "Andrés Iniesta": {
+        "posicion": "mediocampista", "confederacion": "uefa", "pie": "derecho",
+        "era": "actual", "gano_mundial": "si", "gano_balon_oro": "no", "liga": "laliga",
     },
-    "Aprilia RSV4": {
-        "origen": "italiana",
-        "estilo": "deportiva",
-        "cilindrada": "alta",           # 1099 cc
-        "era": "moderna_post2000",      # 2009
-        "cilindros": "4_o_mas",         # V4
-        "refrigeracion": "liquida",
-        "famosa_en_cine": "no",
+    "Xavi Hernández": {
+        "posicion": "mediocampista", "confederacion": "uefa", "pie": "derecho",
+        "era": "actual", "gano_mundial": "si", "gano_balon_oro": "no", "liga": "laliga",
     },
-    "Ducati Multistrada": {
-        "origen": "italiana",
-        "estilo": "trail",
-        "cilindrada": "alta",           # 1158 cc
-        "era": "moderna_post2000",      # 2003
-        "cilindros": "2",               # L-twin (modelo de referencia)
-        "refrigeracion": "liquida",
-        "famosa_en_cine": "no",
+    "Luka Modrić": {
+        "posicion": "mediocampista", "confederacion": "uefa", "pie": "derecho",
+        "era": "actual", "gano_mundial": "no", "gano_balon_oro": "si", "liga": "laliga",
+    },
+    "Kevin De Bruyne": {
+        "posicion": "mediocampista", "confederacion": "uefa", "pie": "derecho",
+        "era": "actual", "gano_mundial": "no", "gano_balon_oro": "no", "liga": "premier",
+    },
+    "Michel Platini": {
+        "posicion": "mediocampista", "confederacion": "uefa", "pie": "derecho",
+        "era": "leyenda", "gano_mundial": "no", "gano_balon_oro": "si", "liga": "seriea",
+    },
+    "Kaká": {
+        "posicion": "mediocampista", "confederacion": "conmebol", "pie": "derecho",
+        "era": "dosmil", "gano_mundial": "si", "gano_balon_oro": "si", "liga": "seriea",
+    },
+    "Andrea Pirlo": {
+        "posicion": "mediocampista", "confederacion": "uefa", "pie": "derecho",
+        "era": "dosmil", "gano_mundial": "si", "gano_balon_oro": "no", "liga": "seriea",
     },
 
-    # ----------------------- INGLESAS -----------------------
-    "Triumph Bonneville": {
-        "origen": "inglesa",
-        "estilo": "naked",
-        "cilindrada": "media",          # 650 cc (clasica)
-        "era": "clasica_pre1990",       # 1959
-        "cilindros": "2",               # parallel-twin
-        "refrigeracion": "aire",
-        "famosa_en_cine": "si",         # The Great Escape (Steve McQueen)
+    # ----------------------- DELANTEROS -----------------------
+    "Lionel Messi": {
+        "posicion": "delantero", "confederacion": "conmebol", "pie": "izquierdo",
+        "era": "actual", "gano_mundial": "si", "gano_balon_oro": "si", "liga": "laliga",
     },
-    "Triumph Speed Triple": {
-        "origen": "inglesa",
-        "estilo": "naked",
-        "cilindrada": "alta",           # 1160 cc
-        "era": "noventas",              # 1994
-        "cilindros": "3",               # triple
-        "refrigeracion": "liquida",
-        "famosa_en_cine": "si",         # Mission: Impossible 2
+    "Cristiano Ronaldo": {
+        "posicion": "delantero", "confederacion": "uefa", "pie": "derecho",
+        "era": "actual", "gano_mundial": "no", "gano_balon_oro": "si", "liga": "laliga",
     },
-    "Triumph Rocket 3": {
-        "origen": "inglesa",
-        "estilo": "cruiser",
-        "cilindrada": "alta",           # 2458 cc (la mas grande de serie)
-        "era": "moderna_post2000",      # 2004
-        "cilindros": "3",               # triple
-        "refrigeracion": "liquida",
-        "famosa_en_cine": "no",
+    "Pelé": {
+        "posicion": "delantero", "confederacion": "conmebol", "pie": "derecho",
+        "era": "leyenda", "gano_mundial": "si", "gano_balon_oro": "no", "liga": "otra",
     },
-    "Triumph Tiger": {
-        "origen": "inglesa",
-        "estilo": "trail",
-        "cilindrada": "media",          # 888 cc (Tiger 900)
-        "era": "moderna_post2000",      # 2010+
-        "cilindros": "3",               # triple
-        "refrigeracion": "liquida",
-        "famosa_en_cine": "no",
+    "Diego Maradona": {
+        "posicion": "delantero", "confederacion": "conmebol", "pie": "izquierdo",
+        "era": "leyenda", "gano_mundial": "si", "gano_balon_oro": "no", "liga": "seriea",
     },
-
-    # ----------------------- ALEMANAS -----------------------
-    "BMW R 1250 GS": {
-        "origen": "alemana",
-        "estilo": "trail",
-        "cilindrada": "alta",           # 1254 cc
-        "era": "moderna_post2000",      # 2018 (linaje GS 1980)
-        "cilindros": "2",               # boxer
-        "refrigeracion": "liquida",
-        "famosa_en_cine": "no",
+    "Ronaldo Nazário": {
+        "posicion": "delantero", "confederacion": "conmebol", "pie": "derecho",
+        "era": "dosmil", "gano_mundial": "si", "gano_balon_oro": "si", "liga": "laliga",
     },
-    "BMW S1000RR": {
-        "origen": "alemana",
-        "estilo": "deportiva",
-        "cilindrada": "media",          # 999 cc
-        "era": "moderna_post2000",      # 2009
-        "cilindros": "4_o_mas",         # inline-4
-        "refrigeracion": "liquida",
-        "famosa_en_cine": "no",
+    "Ronaldinho": {
+        "posicion": "delantero", "confederacion": "conmebol", "pie": "derecho",
+        "era": "dosmil", "gano_mundial": "si", "gano_balon_oro": "si", "liga": "laliga",
     },
-    "BMW R nineT": {
-        "origen": "alemana",
-        "estilo": "naked",
-        "cilindrada": "alta",           # 1170 cc
-        "era": "moderna_post2000",      # 2014
-        "cilindros": "2",               # boxer
-        "refrigeracion": "aire",        # boxer refrigerado por aire/aceite
-        "famosa_en_cine": "no",
+    "Kylian Mbappé": {
+        "posicion": "delantero", "confederacion": "uefa", "pie": "derecho",
+        "era": "actual", "gano_mundial": "si", "gano_balon_oro": "no", "liga": "ligue1",
     },
-    "BMW K 1600": {
-        "origen": "alemana",
-        "estilo": "touring",
-        "cilindrada": "alta",           # 1649 cc
-        "era": "moderna_post2000",      # 2011
-        "cilindros": "4_o_mas",         # 6 cilindros en linea
-        "refrigeracion": "liquida",
-        "famosa_en_cine": "no",
-    },
-
-    # ----------------------- AUSTRIACAS -----------------------
-    "KTM 1290 Super Duke": {
-        "origen": "austriaca",
-        "estilo": "naked",
-        "cilindrada": "alta",           # 1301 cc
-        "era": "moderna_post2000",      # 2014
-        "cilindros": "2",               # V-twin
-        "refrigeracion": "liquida",
-        "famosa_en_cine": "no",
-    },
-    "KTM 1290 Super Adventure": {
-        "origen": "austriaca",
-        "estilo": "trail",
-        "cilindrada": "alta",           # 1301 cc
-        "era": "moderna_post2000",      # 2015
-        "cilindros": "2",               # V-twin
-        "refrigeracion": "liquida",
-        "famosa_en_cine": "no",
-    },
-    "KTM RC 390": {
-        "origen": "austriaca",
-        "estilo": "deportiva",
-        "cilindrada": "baja",           # 373 cc
-        "era": "moderna_post2000",      # 2014
-        "cilindros": "1",               # monocilindrica
-        "refrigeracion": "liquida",
-        "famosa_en_cine": "no",
-    },
-    "KTM 690 Enduro": {
-        "origen": "austriaca",
-        "estilo": "enduro",
-        "cilindrada": "media",          # 690 cc
-        "era": "moderna_post2000",      # 2008
-        "cilindros": "1",               # monocilindrica
-        "refrigeracion": "liquida",
-        "famosa_en_cine": "no",
+    "Robert Lewandowski": {
+        "posicion": "delantero", "confederacion": "uefa", "pie": "derecho",
+        "era": "actual", "gano_mundial": "no", "gano_balon_oro": "no", "liga": "bundesliga",
     },
 }
 
 
 # Lista ordenada de atributos consultables en el juego.
 ATRIBUTOS = [
-    "origen",
-    "estilo",
-    "cilindrada",
+    "posicion",
+    "confederacion",
+    "pie",
     "era",
-    "cilindros",
-    "refrigeracion",
-    "famosa_en_cine",
+    "gano_mundial",
+    "gano_balon_oro",
+    "liga",
 ]
 
 
 def tabla_balanceo():
-    """Devuelve, por atributo, un conteo {valor: cantidad de motos}."""
+    """Devuelve, por atributo, un conteo {valor: cantidad de jugadores}."""
     from collections import Counter
     resumen = {}
     for atributo in ATRIBUTOS:
@@ -270,7 +151,7 @@ def tabla_balanceo():
 
 
 if __name__ == "__main__":
-    print(f"Total de motos: {len(motos)}\n")
+    print(f"Total de jugadores: {len(motos)}\n")
     print("=" * 48)
     print("  TABLA DE BALANCEO DEL TABLERO")
     print("=" * 48)

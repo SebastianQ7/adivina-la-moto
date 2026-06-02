@@ -24,6 +24,7 @@ import sys
 import json
 import socket
 import threading
+import unicodedata
 
 # Permite importar los modulos del proyecto (motos, logica, protocolo) que viven
 # en la carpeta padre, y los del modo web (ws, bot, salas) que viven aqui.
@@ -71,8 +72,21 @@ _MIME = {
 
 
 def _slug(nombre: str) -> str:
-    """Convierte 'Honda CBR 600RR' -> 'honda_cbr_600rr' (nombre de archivo PNG)."""
-    return re.sub(r"[^a-z0-9]+", "_", nombre.lower()).strip("_")
+    """Convierte un nombre en el slug del archivo de imagen.
+
+    Quita acentos: 'Andrés Iniesta' -> 'andres_iniesta', 'Luka Modrić' -> 'luka_modric'.
+    """
+    sin_acentos = unicodedata.normalize("NFKD", nombre).encode("ascii", "ignore").decode("ascii")
+    return re.sub(r"[^a-z0-9]+", "_", sin_acentos.lower()).strip("_")
+
+
+def _imagen_archivo(nombre: str) -> str:
+    """Ruta web de la imagen del personaje, con la extension que realmente exista."""
+    slug = _slug(nombre)
+    for ext in (".png", ".jpg", ".jpeg", ".webp"):
+        if os.path.isfile(os.path.join(IMG_DIR, slug + ext)):
+            return "/img/" + slug + ext
+    return "/img/" + slug + ".png"
 
 
 # --------------------------------------------------------------------------
@@ -246,7 +260,7 @@ def _api_motos():
     """Devuelve (en bytes JSON) los datos de las motos para el cliente."""
     valores = {a: sorted({motos.motos[m][a] for m in motos.motos})
                for a in motos.ATRIBUTOS}
-    imagenes = {m: "/img/" + _slug(m) + ".png" for m in motos.motos}
+    imagenes = {m: _imagen_archivo(m) for m in motos.motos}
     payload = {
         "motos": motos.motos,
         "atributos": motos.ATRIBUTOS,
