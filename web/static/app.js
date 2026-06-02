@@ -24,6 +24,7 @@ let privAccion = "crear";    // 'crear' | 'unir'
 
 let myId = 0, miMoto = null, tablero = [], rivalNombre = "Rival";
 let esMiTurno = false, enPartida = false;
+let huboInicio = false;   // true una vez empezo la 1a ronda: distingue espera inicial de revancha
 let reloj = null, relojRestante = 0, relojTimer = null;
 let modoAdivinar = false;
 let autoOut = new Set();      // descartes por deducción (mis preguntas)
@@ -143,7 +144,7 @@ function construirEmojis(){
 
 function irLobby(){ mostrar("lobby"); }
 function volverLanding(){ mostrar("landing"); }
-function salirAlInicio(){ cerrarWS(); enPartida=false; mostrar("landing"); }
+function salirAlInicio(){ cerrarWS(); enPartida=false; huboInicio=false; mostrar("landing"); }
 
 function elegirModo(modo, el){
   modoSel = modo; sfx.click();
@@ -186,6 +187,7 @@ function conectar(joinMsg){
   ws.onmessage = (ev)=>{ try{ manejar(JSON.parse(ev.data)); }catch(e){ console.error(e); } };
   ws.onclose = ()=>{ if(enPartida){ /* la partida maneja el FIN */ } };
   ws.onerror = ()=> toast(LANG==="es"?"Error de conexión":"Connection error");
+  huboInicio = false;   // empieza una nueva busqueda/partida
   mostrar("esperando");
   $("waitTitle").textContent = t("wait_title");
   $("waitSub").textContent = t("wait_sub");
@@ -211,7 +213,10 @@ function manejar(msg){
    Handlers de mensajes del servidor
    ============================================================ */
 function onEsperando(msg){
-  if(enPartida){ toast(msg.msg||""); return; }    // mensajes de revancha, etc.
+  // Si la partida ya empezo alguna vez (estamos en juego o en la pantalla de
+  // fin esperando revancha), estos ESPERANDO son avisos: van como toast y NO
+  // sacan al jugador de su pantalla (asi no se pierde el boton de Revancha).
+  if(enPartida || huboInicio){ toast(msg.msg||""); return; }
   mostrar("esperando");
   if(msg.codigo){
     // Sala privada creada: mostrar código + QR.
@@ -231,6 +236,7 @@ function onEsperando(msg){
 
 function onInicio(msg){
   enPartida = true;
+  huboInicio = true;
   myId = msg.tu_id; miMoto = msg.tu_moto; tablero = msg.tablero;
   rivalNombre = msg.rival; reloj = msg.reloj;
   esMiTurno = msg.tu_turno;
@@ -282,7 +288,10 @@ function onFin(msg){
   $("finImg").src = IMAGENES[msg.moto_rival] || "";
   $("finMoto").textContent = msg.moto_rival || "";
   $("finScore").textContent = `${t("score_label")}: ${marcadorTexto(msg.marcador)}`;
-  $("btnRevancha").style.display = msg.revancha ? "" : "none";
+  const bR = $("btnRevancha");
+  bR.style.display = msg.revancha ? "" : "none";
+  bR.disabled = false;
+  bR.textContent = t("fin_rematch");
   msg.ganaste ? sfx.win() : sfx.lose();
   mostrar("fin");
 }
@@ -386,7 +395,12 @@ function rendirse(){
     enviar({tipo:T.RENDIRSE});
 }
 function enviarEmoji(e){ enviar({tipo:T.EMOJI, emoji:e}); sfx.emoji(); }
-function revancha(){ enviar({tipo:T.REVANCHA}); toast(LANG==="es"?"Esperando al rival…":"Waiting for rival…"); }
+function revancha(){
+  enviar({tipo:T.REVANCHA});
+  const bR = $("btnRevancha");
+  bR.disabled = true;
+  bR.textContent = (LANG==="es") ? "Esperando al rival…" : "Waiting for rival…";
+}
 
 /* ============================================================
    Turno, reloj, marcador, log
