@@ -258,9 +258,13 @@
 
 <!-- ============ MODAL DE CONFIRMACIÓN (con estilo de la página) ============ -->
 <div class="modal-overlay" id="modal">
-  <div class="modal-box">
-    <div class="modal-icon" id="modalIcon">🎯</div>
+  <div class="modal-box" id="modalBox">
+    <div class="modal-badge" id="modalIcon">🎯</div>
+    <h3 class="modal-title" id="modalTitle">Confirmar</h3>
     <p id="modalText"></p>
+    <div class="modal-moto hidden" id="modalMoto">
+      <img id="modalMotoImg" alt=""><span id="modalMotoName"></span>
+    </div>
     <div class="modal-actions">
       <button class="btn btn-ghost" id="modalCancel">Cancelar</button>
       <button class="btn btn-primary" id="modalOk">Confirmar</button>

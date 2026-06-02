@@ -403,8 +403,14 @@ function construirTablero(){
 function clicCarta(n, c){
   if(modoAdivinar){
     if(!esMiTurno){ toast(t("toast_not_turn")); return; }
-    const txt = t("guess_confirm").replace("{m}", n);
-    confirmar(txt, ()=>{ enviar({tipo:T.ADIVINAR, moto:n}); toggleGuess(); }, "🎯");
+    confirmar({
+      icono: "🎯",
+      titulo: (LANG==="es") ? "¿Adivinar esta moto?" : "Guess this bike?",
+      texto: (LANG==="es") ? "Si fallas, pierdes la ronda al instante." : "If you're wrong, you lose the round instantly.",
+      moto: n,
+      okText: (LANG==="es") ? "Sí, adivinar" : "Yes, guess",
+      onOk: ()=>{ enviar({tipo:T.ADIVINAR, moto:n}); toggleGuess(); }
+    });
     return;
   }
   // Descarte manual (tachar/destachar)
@@ -469,8 +475,13 @@ function preguntar(){
   enviar({tipo:T.PREGUNTA, atributo:$("selAtributo").value, valor:$("selValor").value});
 }
 function rendirse(){
-  confirmar(LANG==="es"?"¿Seguro que quieres rendirte?":"Are you sure you want to give up?",
-            ()=>enviar({tipo:T.RENDIRSE}), "🏳️");
+  confirmar({
+    icono: "🏳️", danger: true, okClass: "btn-danger",
+    titulo: (LANG==="es") ? "¿Rendirte?" : "Give up?",
+    texto: (LANG==="es") ? "El rival ganará esta ronda automáticamente." : "Your rival will win this round automatically.",
+    okText: (LANG==="es") ? "Rendirme" : "Give up",
+    onOk: ()=>enviar({tipo:T.RENDIRSE})
+  });
 }
 function enviarEmoji(e){ enviar({tipo:T.EMOJI, emoji:e}); playEmojiSound(e); }
 function revancha(){
@@ -549,12 +560,27 @@ function agregarLog(msg, mia){
    ============================================================ */
 // Modal de confirmación con el estilo de la página (sustituye a window.confirm).
 let _modalOnOk = null;
-function confirmar(texto, onOk, icono){
-  $("modalText").textContent = texto;
-  $("modalIcon").textContent = icono || "❓";
-  $("modalOk").textContent = (LANG==="es") ? "Confirmar" : "Confirm";
+// opts: { titulo, texto, icono, okText, okClass, danger, moto, onOk }
+function confirmar(opts){
+  $("modalIcon").textContent = opts.icono || "❓";
+  $("modalIcon").className = "modal-badge" + (opts.danger ? " danger" : "");
+  $("modalBox").classList.toggle("danger", !!opts.danger);
+  $("modalTitle").textContent = opts.titulo || ((LANG==="es") ? "¿Confirmar?" : "Confirm?");
+  $("modalText").textContent = opts.texto || "";
+  // Vista previa de la moto (para adivinar)
+  const mm = $("modalMoto");
+  if(opts.moto){
+    $("modalMotoImg").src = IMAGENES[opts.moto] || "";
+    $("modalMotoName").textContent = opts.moto;
+    mm.classList.remove("hidden");
+  } else {
+    mm.classList.add("hidden");
+  }
+  const ok = $("modalOk");
+  ok.textContent = opts.okText || ((LANG==="es") ? "Confirmar" : "Confirm");
+  ok.className = "btn " + (opts.okClass || "btn-primary");
   $("modalCancel").textContent = (LANG==="es") ? "Cancelar" : "Cancel";
-  _modalOnOk = onOk;
+  _modalOnOk = opts.onOk;
   $("modal").classList.add("show");
 }
 function cerrarModal(){ $("modal").classList.remove("show"); _modalOnOk = null; }
