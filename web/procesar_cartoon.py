@@ -28,13 +28,15 @@ IN_DIR = os.path.join(ROOT, "imagenes", "cartoon_raw")
 OUT_DIR = os.path.join(ROOT, "imagenes")
 
 MAX_LADO = 512          # se reescala si es mas grande
-THRESH = 55             # tolerancia del color de fondo al rellenar
+THRESH = 38             # tolerancia del color de fondo al rellenar
 BLANCO = (255, 255, 255)
 
-# Semillas: las 4 esquinas + el centro de cada borde (el fondo es continuo).
+# Semillas: SOLO las 4 esquinas. Son fondo seguro. (Los puntos del centro de los
+# bordes caian sobre el cuerpo del jugador, que llega al borde, y entonces el
+# relleno borraba parte de la camiseta del mismo color -> por eso se "danaban"
+# los azules.)
 def _semillas(w, h):
-    return [(0, 0), (w - 1, 0), (0, h - 1), (w - 1, h - 1),
-            (w // 2, 0), (w // 2, h - 1), (0, h // 2), (w - 1, h // 2)]
+    return [(0, 0), (w - 1, 0), (0, h - 1), (w - 1, h - 1)]
 
 
 def procesar(path_in, path_out, alpha=False):
