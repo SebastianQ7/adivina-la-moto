@@ -10,6 +10,9 @@ web/test_ws.py
 web/test_ws2.py
 web/test_ws3.py
 
+# Caricaturas originales sin procesar (pesadas; las procesadas si se versionan)
+imagenes/cartoon_raw/
+
 # Sistema operativo / OneDrive
 .DS_Store
 Thumbs.db
