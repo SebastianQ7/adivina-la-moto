@@ -7,7 +7,7 @@
 // ---- Tipos de mensaje (coinciden con protocolo.py / salas.py) ----
 const T = {
   JOIN:"JOIN", PREGUNTA:"PREGUNTA", ADIVINAR:"ADIVINAR", DESCARTAR:"DESCARTAR",
-  RENDIRSE:"RENDIRSE", REVANCHA:"REVANCHA", SALIR:"SALIR", EMOJI:"EMOJI",
+  RENDIRSE:"RENDIRSE", REVANCHA:"REVANCHA", SALIR:"SALIR", EMOJI:"EMOJI", CHAT:"CHAT",
   ESPERANDO:"ESPERANDO", INICIO:"INICIO", RESPUESTA:"RESPUESTA",
   TURNO:"TURNO", FIN:"FIN", ERROR:"ERROR"
 };
@@ -21,6 +21,7 @@ let ws = null;
 let avatarSel = null, avatares = [];   // avatarSel = URL de la imagen elegida
 let modoSel = null;          // 'publica' | 'rapida' | 'bot' | 'privada'
 let privAccion = "crear";    // 'crear' | 'unir'
+let dificultadSel = "normal"; // 'facil' | 'normal' | 'dificil' (solo modo bot)
 
 let myId = 0, miMoto = null, tablero = [], rivalNombre = "Rival";
 let esMiTurno = false, enPartida = false;
@@ -102,8 +103,33 @@ function revMoto(){
   o.start(now); o.stop(now+0.62);
   noise(0.6, 0.04, "lowpass", 420);
 }
-// Cada emoji suena distinto y "relacionado".
+// Archivos de sonido por emoji. Si el mp3 existe en /sounds/, se reproduce ese;
+// si no, cae automaticamente al sonido sintetizado de respaldo. Asi el usuario
+// solo tiene que colocar sus mp3 en web/static/sounds/ con estos nombres.
+const SOUND_FILES = {
+  "😀":"/sounds/happy.mp3", "😎":"/sounds/cool.mp3", "😂":"/sounds/laugh.mp3",
+  "😮":"/sounds/wow.mp3", "😭":"/sounds/cry.mp3", "🔥":"/sounds/fire.mp3",
+  "👏":"/sounds/applause.mp3", "🤔":"/sounds/hmm.mp3", "⚽":"/sounds/whistle.mp3",
+  "💀":"/sounds/death.mp3",
+};
+const _audioCache = {};
 function playEmojiSound(e){
+  const url = SOUND_FILES[e];
+  if(url){
+    try{
+      let a = _audioCache[e];
+      if(!a){ a = new Audio(url); a.volume = 0.6; _audioCache[e] = a; }
+      a.currentTime = 0;
+      const pr = a.play();
+      if(pr && pr.catch) pr.catch(()=> synthEmoji(e));  // sin archivo -> sintetiza
+      return;
+    }catch(err){ /* cae al sintetizado */ }
+  }
+  synthEmoji(e);
+}
+
+// Sonido sintetizado de respaldo (sin archivos): cada emoji suena distinto.
+function synthEmoji(e){
   switch(e){
     case "😀": beep(660,0.12,"sine",0.07); setTimeout(()=>beep(880,0.14,"sine",0.07),110); break;
     case "😎": beep(330,0.18,"sawtooth",0.05); setTimeout(()=>beep(440,0.24,"sawtooth",0.05),130); break;
@@ -133,6 +159,9 @@ window.addEventListener("DOMContentLoaded", async () => {
   $("modalOk").onclick = ()=>{ const f=_modalOnOk; cerrarModal(); if(f) f(); };
   $("modalCancel").onclick = cerrarModal;
   $("modal").onclick = (e)=>{ if(e.target.id==="modal") cerrarModal(); };
+
+  // Enviar chat con Enter
+  $("chatInput").addEventListener("keydown", (e)=>{ if(e.key==="Enter") enviarChat(); });
 
   try {
     const r = await fetch("/api/motos");
@@ -229,6 +258,13 @@ function elegirModo(modo, el){
   document.querySelectorAll(".mode").forEach(m=>m.classList.remove("sel"));
   if(el) el.classList.add("sel");
   $("privPanel").classList.toggle("show", modo==="privada");
+  $("botPanel").classList.toggle("show", modo==="bot");
+}
+function setDificultad(d){
+  dificultadSel = d; sfx.click();
+  $("diffFacil").classList.toggle("sel", d==="facil");
+  $("diffNormal").classList.toggle("sel", d==="normal");
+  $("diffDificil").classList.toggle("sel", d==="dificil");
 }
 function setPriv(accion){
   privAccion = accion; sfx.click();
@@ -252,7 +288,7 @@ function comenzar(){
     rapida = (privAccion==="crear") && $("rapidaChk").checked;
   }
   ac(); // "desbloquea" el audio con el gesto del usuario
-  conectar({tipo:T.JOIN, nombre, modo, codigo, rapida});
+  conectar({tipo:T.JOIN, nombre, modo, codigo, rapida, dificultad: dificultadSel});
 }
 
 /* ============================================================
@@ -283,6 +319,7 @@ function manejar(msg){
     case T.TURNO:     onTurno(msg); break;
     case T.FIN:       onFin(msg); break;
     case T.EMOJI:     onEmoji(msg); break;
+    case T.CHAT:      onChat(msg); break;
     case T.ERROR:     toast(msg.msg||"Error"); break;
   }
 }
@@ -333,6 +370,7 @@ function onInicio(msg){
   construirTablero();
   actualizarTurno();
   $("log").innerHTML = "";
+  $("chat").innerHTML = "";
   $("btnAdivinar").textContent = t("g_guess_btn");
   $("board").classList.remove("guessing");
   mostrar("juego");
@@ -484,6 +522,30 @@ function rendirse(){
   });
 }
 function enviarEmoji(e){ enviar({tipo:T.EMOJI, emoji:e}); playEmojiSound(e); }
+
+function enviarChat(){
+  const inp = $("chatInput");
+  const texto = inp.value.trim();
+  if(!texto) return;
+  enviar({tipo:T.CHAT, texto});
+  agregarChat(texto, true);          // muestro mi propio mensaje al instante
+  inp.value = "";
+}
+function onChat(msg){ agregarChat(msg.texto, false, msg.quien); }
+function agregarChat(texto, mio, quien){
+  const c = $("chat");
+  const el = document.createElement("div");
+  el.className = "chat-msg " + (mio ? "mine" : "theirs");
+  if(!mio && quien){
+    const w = document.createElement("span");
+    w.className = "who"; w.textContent = quien;
+    el.appendChild(w);
+  }
+  // createTextNode: nunca interpretar el texto del rival como HTML (seguridad)
+  el.appendChild(document.createTextNode(texto));
+  c.appendChild(el);
+  c.scrollTop = c.scrollHeight;
+}
 function revancha(){
   enviar({tipo:T.REVANCHA});
   const bR = $("btnRevancha");

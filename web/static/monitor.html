@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Monitor · Adivina el Crack</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%93%A1%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0B0E14; --panel:#141A22; --panel2:#1B232E; --line:#26303D;
+    --txt:#E6EDF3; --muted:#8B97A6; --accent:#3B82F6; --cyan:#22D3EE;
+    --green:#22C55E; --amber:#F59E0B;
+    --fd:"Archivo",sans-serif; --fb:"Manrope",system-ui,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:var(--fb);background:var(--bg);color:var(--txt);min-height:100vh;
+    background-image:radial-gradient(circle at 20% 0%,rgba(59,130,246,.12),transparent 40%),
+                     radial-gradient(circle at 90% 10%,rgba(34,211,238,.08),transparent 40%);}
+  .wrap{max-width:980px;margin:0 auto;padding:28px 22px 60px}
+  header{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:28px;flex-wrap:wrap}
+  .title{font-family:var(--fd);font-weight:800;font-size:1.5rem;display:flex;align-items:center;gap:10px}
+  .title .badge{width:38px;height:38px;border-radius:10px;background:var(--panel2);display:grid;place-items:center;font-size:1.2rem}
+  .status{display:flex;align-items:center;gap:8px;font-size:.85rem;color:var(--muted);
+    background:var(--panel);border:1px solid var(--line);padding:8px 14px;border-radius:999px}
+  .dot{width:9px;height:9px;border-radius:50%;background:var(--muted)}
+  .dot.on{background:var(--green);box-shadow:0 0 0 4px rgba(34,197,94,.18);animation:pulse 1.6s infinite}
+  .dot.off{background:#ef4444}
+  @keyframes pulse{50%{opacity:.5}}
+  .sub{color:var(--muted);font-size:.9rem;margin-bottom:24px}
+  .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:28px}
+  @media(max-width:720px){.grid{grid-template-columns:1fr 1fr}}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:22px 20px;position:relative;overflow:hidden}
+  .card .ic{font-size:1.3rem;margin-bottom:10px}
+  .card .num{font-family:var(--fd);font-weight:800;font-size:3rem;line-height:1;transition:color .2s}
+  .card .num.bump{animation:bump .4s ease}
+  @keyframes bump{0%{transform:scale(1)}40%{transform:scale(1.25);color:var(--cyan)}100%{transform:scale(1)}}
+  .card .lbl{color:var(--muted);font-size:.82rem;margin-top:8px;text-transform:uppercase;letter-spacing:.08em}
+  .card.activas .num{color:var(--accent)}
+  .card.cola .num{color:var(--amber)}
+  .card.conex .num{color:var(--cyan)}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:22px}
+  .panel h2{font-family:var(--fd);font-size:1.05rem;margin-bottom:16px;display:flex;align-items:center;gap:8px}
+  .games{display:flex;flex-direction:column;gap:10px}
+  .game{display:flex;align-items:center;gap:14px;background:var(--panel2);border:1px solid var(--line);
+    border-radius:12px;padding:13px 16px;animation:slide .3s ease}
+  @keyframes slide{from{opacity:0;transform:translateX(-8px)}}
+  .game .gid{font-family:var(--fd);font-weight:800;color:var(--accent);min-width:42px}
+  .game .vs{flex:1;font-weight:600}
+  .game .vs span{color:var(--muted);font-weight:400;margin:0 8px}
+  .game .tag{font-size:.72rem;font-weight:700;padding:4px 10px;border-radius:999px;background:rgba(59,130,246,.15);color:var(--accent);text-transform:uppercase;letter-spacing:.05em}
+  .game .tag.bot{background:rgba(245,158,11,.15);color:var(--amber)}
+  .game .tag.rapida{background:rgba(34,211,238,.15);color:var(--cyan)}
+  .empty{color:var(--muted);text-align:center;padding:24px;font-size:.9rem}
+  .foot{margin-top:24px;color:var(--muted);font-size:.8rem;text-align:center}
+  .foot code{background:var(--panel2);padding:2px 7px;border-radius:6px;color:var(--cyan)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="title"><span class="badge">📡</span> Monitor del servidor</div>
+    <div class="status"><span class="dot" id="dot"></span><span id="statusTxt">Conectando…</span></div>
+  </header>
+  <p class="sub">Estado en tiempo real de <b>Adivina el Crack</b> — cada partida activa es un <b>hilo</b>; la cola usa un <b>Lock</b>; todo viaja por <b>WebSocket</b>.</p>
+
+  <div class="grid">
+    <div class="card activas"><div class="ic">🎮</div><div class="num" id="nActivas">0</div><div class="lbl">Partidas activas</div></div>
+    <div class="card cola"><div class="ic">⏳</div><div class="num" id="nCola">0</div><div class="lbl">Jugadores en cola</div></div>
+    <div class="card conex"><div class="ic">🔌</div><div class="num" id="nConex">0</div><div class="lbl">Conexiones</div></div>
+    <div class="card"><div class="ic">⏱️</div><div class="num" id="nUptime" style="font-size:2rem">0s</div><div class="lbl">Tiempo activo</div></div>
+  </div>
+
+  <div class="panel">
+    <h2>🎯 Partidas en curso</h2>
+    <div class="games" id="games"></div>
+  </div>
+
+  <div class="foot">Se actualiza solo cada 1.5 s · página <code>/monitor</code></div>
+</div>
+
+<script>
+  const $ = id => document.getElementById(id);
+  let prev = {activas:0, cola:0, conex:0};
+
+  function fmtUptime(s){
+    if(s < 60) return s + "s";
+    const m = Math.floor(s/60), sec = s%60;
+    if(m < 60) return m + "m " + sec + "s";
+    const h = Math.floor(m/60);
+    return h + "h " + (m%60) + "m";
+  }
+  function setNum(id, val, key){
+    const el = $(id);
+    if(prev[key] !== undefined && val !== prev[key]){
+      el.classList.remove("bump"); void el.offsetWidth; el.classList.add("bump");
+    }
+    el.textContent = val;
+    if(key) prev[key] = val;
+  }
+  function render(s){
+    setNum("nActivas", s.partidas_activas, "activas");
+    setNum("nCola", s.en_cola, "cola");
+    setNum("nConex", s.conexiones, "conex");
+    $("nUptime").textContent = fmtUptime(s.uptime);
+    const cont = $("games");
+    if(!s.partidas || !s.partidas.length){
+      cont.innerHTML = '<div class="empty">No hay partidas en curso ahora mismo.</div>';
+      return;
+    }
+    cont.innerHTML = "";
+    s.partidas.forEach(p => {
+      const tag = p.modo === "bot" ? "bot" : (p.modo === "rapida" ? "rapida" : "");
+      const el = document.createElement("div");
+      el.className = "game";
+      el.innerHTML = `<span class="gid">#${p.id}</span>
+        <span class="vs"></span>
+        <span class="tag ${tag}">${p.modo}</span>`;
+      el.querySelector(".vs").append(
+        document.createTextNode(p.j1));
+      const vs = document.createElement("span"); vs.textContent = "vs"; el.querySelector(".vs").append(vs);
+      el.querySelector(".vs").append(document.createTextNode(p.j2));
+      cont.appendChild(el);
+    });
+  }
+
+  function conectar(){
+    const proto = location.protocol === "https:" ? "wss" : "ws";
+    const ws = new WebSocket(`${proto}://${location.host}/ws`);
+    ws.onopen = () => { ws.send(JSON.stringify({tipo:"MONITOR"})); $("dot").className="dot on"; $("statusTxt").textContent="En vivo"; };
+    ws.onmessage = ev => { try{ const m = JSON.parse(ev.data); if(m.tipo==="STATS") render(m); }catch(e){} };
+    ws.onclose = () => { $("dot").className="dot off"; $("statusTxt").textContent="Reconectando…"; setTimeout(conectar, 2000); };
+    ws.onerror = () => ws.close();
+  }
+  conectar();
+</script>
+</body>
+</html>

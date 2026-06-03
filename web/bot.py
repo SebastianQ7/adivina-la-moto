@@ -48,25 +48,64 @@ class Bot:
     # Decision de jugada
     # ------------------------------------------------------------------
     def decidir_jugada(self):
-        """Devuelve la jugada del bot en su turno.
+        """Devuelve la jugada del bot segun su dificultad.
 
         Retorna una tupla:
-          ("ADIVINAR", nombre_moto)        si ya esta seguro (1 candidato), o
+          ("ADIVINAR", nombre)             si decide arriesgar, o
           ("PREGUNTA", atributo, valor)    en caso contrario.
-        """
-        # Si solo queda una opcion (o ninguna por seguridad), adivina.
-        if len(self.candidatos) <= 1:
-            moto = next(iter(self.candidatos)) if self.candidatos else \
-                random.choice(list(motos.motos.keys()))
-            return ("ADIVINAR", moto)
 
-        mejor = self._mejor_pregunta()
+        Diferencias por dificultad:
+          - dificil: siempre la mejor pregunta (parte a la mitad) y solo adivina
+            cuando esta SEGURO (1 candidato). Rapido y certero.
+          - normal: la mejor pregunta el 70% de las veces (a veces una al azar);
+            adivina con 1 candidato.
+          - facil: preguntas al azar (no optimas) y se arriesga a adivinar con
+            2 candidatos -> falla mas seguido (mas facil ganarle).
+        """
+        n = len(self.candidatos)
+
+        # ¿Cuando adivinar? El facil se arriesga antes (con 2), los demas con 1.
+        if self.dificultad == "facil":
+            if n <= 2:
+                return ("ADIVINAR", self._un_candidato())
+        else:
+            if n <= 1:
+                return ("ADIVINAR", self._un_candidato())
+
+        # ¿Que pregunta hacer?
+        if self.dificultad == "dificil":
+            mejor = self._mejor_pregunta()
+        elif self.dificultad == "facil":
+            mejor = self._pregunta_aleatoria()
+        else:  # normal
+            mejor = self._mejor_pregunta() if random.random() < 0.7 else self._pregunta_aleatoria()
+
         if mejor is None:
-            # No hay forma de partir mas: adivina al azar entre los candidatos.
-            return ("ADIVINAR", random.choice(list(self.candidatos)))
+            return ("ADIVINAR", self._un_candidato())
         atributo, valor = mejor
         self._preguntas_hechas.add((atributo, valor))
         return ("PREGUNTA", atributo, valor)
+
+    def _un_candidato(self):
+        """Un candidato al azar (o cualquier moto si el conjunto quedo vacio)."""
+        if self.candidatos:
+            return random.choice(list(self.candidatos))
+        return random.choice(list(motos.motos.keys()))
+
+    def _pregunta_aleatoria(self):
+        """Una pregunta VALIDA al azar que parta el conjunto (no necesariamente la mejor)."""
+        total = len(self.candidatos)
+        opciones = []
+        for atributo in motos.ATRIBUTOS:
+            valores = {motos.motos[m][atributo] for m in self.candidatos}
+            for valor in valores:
+                if (atributo, valor) in self._preguntas_hechas:
+                    continue
+                cuantos = sum(1 for m in self.candidatos
+                              if motos.motos[m][atributo] == valor)
+                if 0 < cuantos < total:
+                    opciones.append((atributo, valor))
+        return random.choice(opciones) if opciones else None
 
     def _mejor_pregunta(self):
         """Elige (atributo, valor) que parte los candidatos lo mas cerca de la mitad."""

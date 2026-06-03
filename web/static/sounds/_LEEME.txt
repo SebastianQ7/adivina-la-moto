@@ -1,0 +1,30 @@
+SONIDOS DE LAS REACCIONES (emojis)
+==================================
+
+Coloca aqui los archivos de sonido con EXACTAMENTE estos nombres (formato .mp3).
+En cuanto un archivo exista, el juego lo usa; si falta, usa un sonido sintetizado
+de respaldo (no se rompe nada).
+
+  happy.mp3      -> 😀  (positivo / "ding" alegre)
+  cool.mp3       -> 😎  (swoosh / "cool")
+  laugh.mp3      -> 😂  (risa)
+  wow.mp3        -> 😮  (asombro / "wow" / gasp)
+  cry.mp3        -> 😭  (llanto / violin triste)
+  fire.mp3       -> 🔥  (fuego / whoosh)
+  applause.mp3   -> 👏  (aplausos)
+  hmm.mp3        -> 🤔  (pensando / "hmm")
+  whistle.mp3    -> ⚽  (pito de arbitro)
+  death.mp3      -> 💀  (fallo / fantasmal)
+
+DONDE DESCARGARLOS (gratis, sin cuenta, sin atribucion):
+  - Mixkit:  https://mixkit.co/free-sound-effects/   (no pide registro)
+  - Pixabay: https://pixabay.com/sound-effects/
+
+COMO:
+  1) Entra al sitio y busca el termino (ej. "applause", "laugh", "whistle").
+  2) Elige uno CORTO (1-2 segundos se siente mejor).
+  3) Descargalo en MP3.
+  4) Renombralo EXACTAMENTE como arriba (ej. applause.mp3) y ponlo en esta carpeta.
+
+Luego: en local refresca con Ctrl+F5; para que salga en la web publica hay que
+hacer commit + Manual Deploy en Render.

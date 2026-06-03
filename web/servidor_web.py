@@ -22,6 +22,7 @@ import os
 import re
 import sys
 import json
+import time
 import socket
 import threading
 import unicodedata
@@ -52,6 +53,21 @@ STATIC_DIR = os.path.join(_WEB_DIR, "static")
 IMG_DIR = os.path.join(_ROOT_DIR, "imagenes")
 
 GESTOR = salas_mod.GestorSalas()
+
+# --- Estado para el MONITOR en vivo ---
+INICIO_SERVIDOR = time.time()
+MONITORES = []                       # WebSockets de los monitores conectados
+MON_LOCK = threading.Lock()
+_conex_lock = threading.Lock()
+_conexiones = 0                      # conexiones WebSocket abiertas ahora
+
+
+def _conex(delta):
+    """Suma/resta al contador de conexiones abiertas (protegido por Lock)."""
+    global _conexiones
+    with _conex_lock:
+        _conexiones += delta
+        return _conexiones
 
 # Tipos MIME por extension, para servir los archivos estaticos correctamente.
 _MIME = {
@@ -151,7 +167,11 @@ def manejar_conexion(conn, addr):
             conn.close()
             return
         socket_ws = ws_mod.WebSocket(conn, resto)
-        manejar_websocket(socket_ws)
+        _conex(1)
+        try:
+            manejar_websocket(socket_ws)
+        finally:
+            _conex(-1)
         return
 
     # Peticion HTTP normal (solo GET).
@@ -178,6 +198,11 @@ def manejar_websocket(socket_ws):
     except ValueError:
         socket_ws.cerrar()
         return
+    # Conexion del MONITOR en vivo (no es un jugador).
+    if datos.get("tipo") == "MONITOR":
+        manejar_monitor(socket_ws)
+        return
+
     if datos.get("tipo") != protocolo.JOIN:
         socket_ws.enviar(json.dumps(protocolo.crear(
             protocolo.ERROR, msg="Se esperaba un mensaje JOIN.")))
@@ -188,9 +213,12 @@ def manejar_websocket(socket_ws):
     modo = datos.get("modo", "publica")
     codigo = (datos.get("codigo") or "").strip().upper()
     rapida = bool(datos.get("rapida"))
+    dificultad = datos.get("dificultad", "normal")
+    if dificultad not in ("facil", "normal", "dificil"):
+        dificultad = "normal"
 
     jugador = salas_mod.JugadorWeb(socket_ws, nombre)
-    estado, dato = GESTOR.unir(jugador, modo, codigo, rapida)
+    estado, dato = GESTOR.unir(jugador, modo, codigo, rapida, dificultad)
 
     if estado == "ERROR":
         jugador.enviar(protocolo.crear(protocolo.ERROR, msg=dato))
@@ -232,12 +260,62 @@ def _bucle_lector(jugador, sala):
 
 
 # --------------------------------------------------------------------------
+# Monitor en vivo (visualiza la concurrencia: hilos de partida + cola + conexiones)
+# --------------------------------------------------------------------------
+def _stats():
+    """Foto del estado actual del servidor para el monitor."""
+    activas = salas_mod.GameRoom.partidas_activas()
+    return {
+        "tipo": "STATS",
+        "partidas_activas": len(activas),
+        "en_cola": GESTOR.en_espera(),
+        "conexiones": _conexiones,
+        "uptime": int(time.time() - INICIO_SERVIDOR),
+        "partidas": activas,
+    }
+
+
+def manejar_monitor(socket_ws):
+    """Registra un monitor y lo mantiene vivo (el hilo _bucle_monitor le envia
+    las estadisticas; aqui solo detectamos si se desconecta)."""
+    with MON_LOCK:
+        MONITORES.append(socket_ws)
+    socket_ws.enviar(json.dumps(_stats()))   # primer envio inmediato
+    try:
+        while socket_ws.recibir() is not None:
+            pass
+    finally:
+        with MON_LOCK:
+            if socket_ws in MONITORES:
+                MONITORES.remove(socket_ws)
+
+
+def _bucle_monitor():
+    """Hilo que transmite las estadisticas a todos los monitores cada ~1.5 s."""
+    while True:
+        time.sleep(1.5)
+        with MON_LOCK:
+            hay = bool(MONITORES)
+        if not hay:
+            continue
+        data = json.dumps(_stats())
+        with MON_LOCK:
+            for m in list(MONITORES):
+                if not m.enviar(data):
+                    MONITORES.remove(m)
+
+
+# --------------------------------------------------------------------------
 # Servir archivos estaticos y la API
 # --------------------------------------------------------------------------
 def _servir_http(conn, ruta):
     """Sirve la pagina, los estaticos, las imagenes y la API /api/motos."""
     if ruta == "/" or ruta == "":
         _enviar_archivo(conn, os.path.join(STATIC_DIR, "index.html"))
+        return
+
+    if ruta == "/monitor":
+        _enviar_archivo(conn, os.path.join(STATIC_DIR, "monitor.html"))
         return
 
     if ruta == "/api/motos":
@@ -342,10 +420,14 @@ def main():
     servidor.listen()
 
     print("=" * 56)
-    print("  SERVIDOR WEB  -  'Adivina la Moto'")
-    print(f"  Abre en el navegador:  http://localhost:{PORT}")
+    print("  SERVIDOR WEB  -  'Adivina el Crack'")
+    print(f"  Juego:    http://localhost:{PORT}")
+    print(f"  Monitor:  http://localhost:{PORT}/monitor")
     print("  (Ctrl+C para detener)")
     print("=" * 56)
+
+    # Hilo que alimenta el monitor en vivo (estadisticas de concurrencia).
+    threading.Thread(target=_bucle_monitor, daemon=True).start()
 
     try:
         while True:

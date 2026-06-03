@@ -33,8 +33,9 @@ import bot
 # Duracion (segundos) del reloj por turno en los modos "rapida".
 RELOJ = 30
 
-# Tipo de mensaje extra del modo web (los demas se reutilizan de protocolo.py).
+# Tipos de mensaje extra del modo web (los demas se reutilizan de protocolo.py).
 EMOJI = "EMOJI"
+CHAT = "CHAT"
 
 crear = protocolo.crear  # alias: construye dicts {tipo, ...}
 
@@ -45,12 +46,13 @@ crear = protocolo.crear  # alias: construye dicts {tipo, ...}
 class JugadorWeb:
     """Representa a un jugador conectado por WebSocket, o a un bot local."""
 
-    def __init__(self, ws, nombre, es_bot=False):
+    def __init__(self, ws, nombre, es_bot=False, dificultad="normal"):
         """Guarda el WebSocket (None si es bot), el nombre y el estado del jugador."""
         self.ws = ws                       # web.ws.WebSocket  (None si es bot)
         self.nombre = nombre
         self.es_bot = es_bot
-        self.bot = bot.Bot(nombre) if es_bot else None
+        self.dificultad = dificultad
+        self.bot = bot.Bot(nombre, dificultad) if es_bot else None
         self.moto_secreta = None
         # Para los jugadores que esperan rival: la sala se asigna al emparejar y
         # el Event despierta al hilo que estaba bloqueado esperando.
@@ -76,6 +78,24 @@ class GameRoom(threading.Thread):
 
     _contador = 0
     _contador_lock = threading.Lock()
+
+    # Registro de partidas EN CURSO (estado compartido para el monitor en vivo).
+    # Se protege con su Lock porque varios hilos (cada GameRoom) lo modifican.
+    activas = []
+    activas_lock = threading.Lock()
+
+    @classmethod
+    def partidas_activas(cls):
+        """Lista (para el monitor) de las partidas que estan corriendo ahora."""
+        with cls.activas_lock:
+            return [r.info() for r in cls.activas]
+
+    def info(self):
+        """Resumen de la partida para mostrar en el monitor."""
+        modo = ("bot" if any(j.es_bot for j in self.jugadores)
+                else ("rapida" if self.reloj else "normal"))
+        return {"id": self.id, "j1": self.jugadores[0].nombre,
+                "j2": self.jugadores[1].nombre, "modo": modo}
 
     def __init__(self, jugadores, reloj=None):
         """Inicializa el estado de la partida. `reloj`=segundos por turno o None."""
@@ -130,7 +150,7 @@ class GameRoom(threading.Thread):
         # Reinicia el razonamiento del bot para la nueva ronda.
         for j in self.jugadores:
             if j.es_bot:
-                j.bot = bot.Bot(j.nombre)
+                j.bot = bot.Bot(j.nombre, j.dificultad)
 
         print(f"[WEB #{self.id}] Secretas -> {self.jugadores[0].nombre}: {secreta_0} | "
               f"{self.jugadores[1].nombre}: {secreta_1}")
@@ -154,6 +174,8 @@ class GameRoom(threading.Thread):
     # ---------------- bucle principal ----------------
     def run(self):
         """Juega rondas sucesivas hasta que alguien gana sin revancha o se corta."""
+        with GameRoom.activas_lock:
+            GameRoom.activas.append(self)
         if not self._setup():
             self._cerrar()
             return
@@ -235,6 +257,12 @@ class GameRoom(threading.Thread):
         elif tipo == EMOJI:
             self._otro(jugador).enviar(crear(
                 EMOJI, quien=jugador.nombre, emoji=mensaje.get("emoji")))
+
+        elif tipo == CHAT:
+            texto = str(mensaje.get("texto", ""))[:200]
+            if texto.strip():
+                self._otro(jugador).enviar(crear(
+                    CHAT, quien=jugador.nombre, texto=texto))
 
         elif tipo == protocolo.DESCARTAR:
             pass  # ayuda local del jugador; el cliente la pinta
@@ -348,11 +376,19 @@ class GameRoom(threading.Thread):
             elif tipo == EMOJI:
                 self._otro(jugador).enviar(crear(
                     EMOJI, quien=jugador.nombre, emoji=mensaje.get("emoji")))
+            elif tipo == CHAT:
+                texto = str(mensaje.get("texto", ""))[:200]
+                if texto.strip():
+                    self._otro(jugador).enviar(crear(
+                        CHAT, quien=jugador.nombre, texto=texto))
             # otros mensajes se ignoran entre rondas
         return not self.terminar
 
     def _cerrar(self):
-        """Cierra los WebSocket de los jugadores humanos."""
+        """Cierra los WebSocket de los jugadores humanos y se quita del registro."""
+        with GameRoom.activas_lock:
+            if self in GameRoom.activas:
+                GameRoom.activas.remove(self)
         for jugador in self.jugadores:
             if jugador.ws is not None:
                 jugador.ws.cerrar()
@@ -376,7 +412,20 @@ class GestorSalas:
         """True si la conexion del jugador sigue abierta."""
         return jugador is not None and jugador.ws is not None and not jugador.ws.cerrado
 
-    def unir(self, jugador, modo, codigo, rapida):
+    def en_espera(self):
+        """Cuantos jugadores estan esperando rival ahora mismo (para el monitor)."""
+        with self.lock:
+            n = 0
+            if self._vivo(self.esp_publica):
+                n += 1
+            if self._vivo(self.esp_rapida):
+                n += 1
+            for jug, _ in self.privadas.values():
+                if self._vivo(jug):
+                    n += 1
+            return n
+
+    def unir(self, jugador, modo, codigo, rapida, dificultad="normal"):
         """Empareja al jugador segun el modo. Devuelve una tupla:
           ("INICIAR", sala)  -> hay pareja; el llamante hace sala.start()
           ("ESPERA", dato)   -> sigue esperando (dato = codigo de sala o None)
@@ -384,7 +433,7 @@ class GestorSalas:
         """
         with self.lock:
             if modo == "bot":
-                bot_j = JugadorWeb(None, "Bot", es_bot=True)
+                bot_j = JugadorWeb(None, "Bot", es_bot=True, dificultad=dificultad)
                 sala = GameRoom([jugador, bot_j], reloj=(RELOJ if rapida else None))
                 jugador.sala = sala
                 return ("INICIAR", sala)

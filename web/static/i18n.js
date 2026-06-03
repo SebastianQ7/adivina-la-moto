@@ -33,6 +33,7 @@ const I18N = {
     m_priv_t: "Partida privada", m_priv_s: "Con código y QR para tu amigo.",
     priv_create: "Crear sala", priv_join: "Unirme", priv_code: "Código de la sala",
     priv_fast_t: "Modo rápido", priv_fast_s: "Reloj de 30s por turno",
+    bot_diff: "Dificultad del Bot", diff_easy: "Fácil", diff_normal: "Normal", diff_hard: "Difícil",
     lobby_start: "Empezar", lobby_back: "← Volver al inicio",
     wait_title: "Buscando rival…", wait_sub: "Te emparejaremos en cuanto otro jugador entre.",
     wait_code: "Código de la sala", wait_cancel: "Cancelar",
@@ -40,6 +41,7 @@ const I18N = {
     g_secret: "Tu jugador secreto", g_ask: "Preguntar", g_ask_btn: "Preguntar",
     g_guess_btn: "🎯 Adivinar un jugador", g_guess_cancel: "✕ Cancelar adivinar",
     g_giveup: "🏳️ Rendirme", g_left: "jugadores posibles", g_react: "Reaccionar", g_history: "Historial",
+    g_chat: "Chat", chat_ph: "Escribe un mensaje…",
     fin_reveal: "El jugador del rival era", fin_rematch: "Revancha", fin_exit: "Salir",
     turn_mine: "Tu turno", turn_theirs: "Turno del rival",
     guess_confirm: "¿Adivinar que el jugador del rival es {m}?",
@@ -78,6 +80,7 @@ const I18N = {
     m_priv_t: "Private match", m_priv_s: "With a code and QR for your friend.",
     priv_create: "Create room", priv_join: "Join", priv_code: "Room code",
     priv_fast_t: "Quick mode", priv_fast_s: "30s-per-turn clock",
+    bot_diff: "Bot difficulty", diff_easy: "Easy", diff_normal: "Normal", diff_hard: "Hard",
     lobby_start: "Start", lobby_back: "← Back to home",
     wait_title: "Looking for a rival…", wait_sub: "We'll pair you as soon as another player joins.",
     wait_code: "Room code", wait_cancel: "Cancel",
@@ -85,6 +88,7 @@ const I18N = {
     g_secret: "Your secret player", g_ask: "Ask", g_ask_btn: "Ask",
     g_guess_btn: "🎯 Guess a player", g_guess_cancel: "✕ Cancel guessing",
     g_giveup: "🏳️ Give up", g_left: "possible players", g_react: "React", g_history: "History",
+    g_chat: "Chat", chat_ph: "Type a message…",
     fin_reveal: "The rival's player was", fin_rematch: "Rematch", fin_exit: "Exit",
     turn_mine: "Your turn", turn_theirs: "Rival's turn",
     guess_confirm: "Guess that the rival's player is {m}?",
@@ -141,6 +145,10 @@ function aplicarIdioma() {
   document.querySelectorAll("[data-i18n]").forEach(el => {
     const k = el.getAttribute("data-i18n");
     if (I18N[LANG] && I18N[LANG][k] !== undefined) el.textContent = I18N[LANG][k];
+  });
+  document.querySelectorAll("[data-i18n-ph]").forEach(el => {
+    const k = el.getAttribute("data-i18n-ph");
+    if (I18N[LANG] && I18N[LANG][k] !== undefined) el.placeholder = I18N[LANG][k];
   });
   const btn = document.getElementById("langBtn");
   if (btn) btn.textContent = (LANG === "es") ? "EN" : "ES";
