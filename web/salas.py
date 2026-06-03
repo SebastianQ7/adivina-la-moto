@@ -412,6 +412,21 @@ class GestorSalas:
         """True si la conexion del jugador sigue abierta."""
         return jugador is not None and jugador.ws is not None and not jugador.ws.cerrado
 
+    def quitar_de_cola(self, jugador):
+        """Saca a un jugador de la cola/salas privadas (al cancelar o cerrar).
+
+        Evita el "fantasma" que emparejaria al siguiente y le daria una victoria
+        falsa por abandono.
+        """
+        with self.lock:
+            if self.esp_publica is jugador:
+                self.esp_publica = None
+            if self.esp_rapida is jugador:
+                self.esp_rapida = None
+            for codigo, (jug, _) in list(self.privadas.items()):
+                if jug is jugador:
+                    del self.privadas[codigo]
+
     def en_espera(self):
         """Cuantos jugadores estan esperando rival ahora mismo (para el monitor)."""
         with self.lock:

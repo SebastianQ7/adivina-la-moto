@@ -23,6 +23,7 @@ import re
 import sys
 import json
 import time
+import select
 import socket
 import threading
 import unicodedata
@@ -167,11 +168,7 @@ def manejar_conexion(conn, addr):
             conn.close()
             return
         socket_ws = ws_mod.WebSocket(conn, resto)
-        _conex(1)
-        try:
-            manejar_websocket(socket_ws)
-        finally:
-            _conex(-1)
+        manejar_websocket(socket_ws)
         return
 
     # Peticion HTTP normal (solo GET).
@@ -218,31 +215,44 @@ def manejar_websocket(socket_ws):
         dificultad = "normal"
 
     jugador = salas_mod.JugadorWeb(socket_ws, nombre)
-    estado, dato = GESTOR.unir(jugador, modo, codigo, rapida, dificultad)
+    _conex(1)   # solo los JUGADORES cuentan como conexion (los monitores no)
+    try:
+        estado, dato = GESTOR.unir(jugador, modo, codigo, rapida, dificultad)
 
-    if estado == "ERROR":
-        jugador.enviar(protocolo.crear(protocolo.ERROR, msg=dato))
-        socket_ws.cerrar()
-        return
-
-    if estado == "ESPERA":
-        # dato = codigo de sala privada (para mostrar QR) o None (publica).
-        jugador.enviar(protocolo.crear(
-            protocolo.ESPERANDO,
-            msg="Esperando a otro jugador...",
-            codigo=dato))
-        jugador.evento_sala.wait()       # se despierta al emparejar
-        if jugador.cancelado or jugador.sala is None:
-            socket_ws.cerrar()
+        if estado == "ERROR":
+            jugador.enviar(protocolo.crear(protocolo.ERROR, msg=dato))
             return
-        sala = jugador.sala
-    else:  # INICIAR: este hilo es el iniciador; arranca la partida.
-        sala = dato
-        sala.start()
 
-    # A partir de aqui, este hilo es el LECTOR del jugador: vuelca sus mensajes
-    # en la cola de eventos de la sala (igual que el lector del modo clasico).
-    _bucle_lector(jugador, sala)
+        if estado == "ESPERA":
+            # dato = codigo de sala privada (para mostrar QR) o None (publica).
+            jugador.enviar(protocolo.crear(
+                protocolo.ESPERANDO,
+                msg="Esperando a otro jugador...",
+                codigo=dato))
+            # Espera el emparejamiento, pero VIGILANDO si el jugador cancela o
+            # cierra: en ese caso lo sacamos de la cola (si no, quedaria un
+            # "fantasma" que emparejaria al siguiente con una victoria falsa).
+            while not jugador.evento_sala.is_set():
+                try:
+                    listos, _, _ = select.select([socket_ws.conn], [], [], 0.5)
+                except OSError:
+                    listos = [socket_ws.conn]
+                if listos:   # el que espera solo manda datos al cancelar/cerrar
+                    GESTOR.quitar_de_cola(jugador)
+                    return
+            if jugador.cancelado or jugador.sala is None:
+                return
+            sala = jugador.sala
+        else:  # INICIAR: este hilo es el iniciador; arranca la partida.
+            sala = dato
+            sala.start()
+
+        # Este hilo pasa a ser el LECTOR del jugador: vuelca sus mensajes en la
+        # cola de eventos de la sala (igual que el lector del modo clasico).
+        _bucle_lector(jugador, sala)
+    finally:
+        _conex(-1)
+        socket_ws.cerrar()
 
 
 def _bucle_lector(jugador, sala):

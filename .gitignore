@@ -6,9 +6,7 @@ __pycache__/
 venv/
 
 # Tests de desarrollo del modo web (no son parte del despliegue)
-web/test_ws.py
-web/test_ws2.py
-web/test_ws3.py
+web/test_ws*.py
 
 # Caricaturas originales sin procesar (pesadas; las procesadas si se versionan)
 imagenes/cartoon_raw/
