@@ -53,6 +53,17 @@ def procesar(path_in, path_out, alpha=False):
         mascara = diff.point(lambda v: 0 if v == 0 else 255)   # 0 = fondo -> transparente
         im = im.convert("RGBA")
         im.putalpha(mascara)
+        # Normaliza el TAMANO: recorta al contenido (alpha) y lo centra en un
+        # cuadrado con un margen fijo, asi todas las figuras ocupan lo mismo.
+        bbox = im.split()[3].getbbox()
+        if bbox:
+            im = im.crop(bbox)
+        lado = max(im.size)
+        margen = int(lado * 0.06)
+        cuadro = Image.new("RGBA", (lado + 2 * margen, lado + 2 * margen), (0, 0, 0, 0))
+        off = ((cuadro.width - im.width) // 2, (cuadro.height - im.height) // 2)
+        cuadro.paste(im, off, im)
+        im = cuadro
     else:
         # Pinta de blanco el fondo conectado a los bordes.
         for s in _semillas(w, h):
