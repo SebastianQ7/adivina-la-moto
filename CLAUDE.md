@@ -1,4 +1,4 @@
-# Adivina Quién — Motos
+# Adivina el Crack — Fútbol
 
 Proyecto para la materia **Programación Distribuida y Paralela** del
 **Politécnico Colombiano Jaime Isaza Cadavid**.
@@ -6,95 +6,121 @@ Proyecto para la materia **Programación Distribuida y Paralela** del
 ## Descripción
 
 Implementación del juego de mesa *Adivina Quién* en modo cliente-servidor.
-En lugar de personajes con caras, el tablero usa **24 motos icónicas reales**
-como fichas.
+En lugar de personajes con caras, el tablero usa **24 futbolistas icónicos**
+(en caricatura) como fichas. Tiene dos frontends sobre el mismo motor:
+
+- **Web** (principal): jugable en navegador y móvil, desplegable en internet.
+- **Clásico** (respaldo): cliente gráfico de escritorio en Tkinter.
+
+Uso explícito de **hilos y sockets** es **requisito obligatorio** de la materia.
 
 ## Stack técnico
 
 - **Lenguaje:** Python 3 (solo biblioteca estándar)
-- **Concurrencia:** módulo `threading`
-- **Red:** módulo `socket` (TCP para el juego, UDP para el autodescubrimiento)
-- **Interfaz:** `tkinter` (gráfica)
-
-Uso explícito de hilos y sockets es **requisito obligatorio** de la materia.
+- **Concurrencia:** módulo `threading` (un hilo por conexión, un hilo por partida)
+- **Red:** módulo `socket` — TCP para el modo clásico; HTTP + **WebSocket hecho a
+  mano** (sobre `socket`) para el modo web
+- **Frontend web:** HTML/CSS/JS vanilla; **Tkinter** para el cliente clásico
 
 ## Arquitectura
 
-| Rol | Descripción |
-|-----|-------------|
-| `server.py` | Servidor multihilo: empareja jugadores (`WaitingRoom` + `Lock`), corre cada partida en su hilo (`GameSession`) y responde al autodescubrimiento UDP |
-| `gui_client.py` | Interfaz gráfica del jugador (Tkinter): lobby (nombre + avatar), tablero de cartas, preguntas, suposiciones e historial |
-| `logica.py` | Reglas puras del juego (sin red ni hilos), reutilizadas por servidor y cliente |
-| `protocolo.py` | Capa de comunicación compartida: tipos de mensaje, envío/recepción JSON y autodescubrimiento UDP |
-| `motos.py` | Datos de las 24 motos y sus atributos (sin lógica de red) |
-| `generar_avatares.py` | Utilidad que genera los avatares PNG del lobby en `imagenes/avatares/` |
+### Núcleo compartido (reglas puras, sin red ni hilos)
+| Archivo | Descripción |
+|---------|-------------|
+| `motos.py` | Datos de los 24 jugadores y sus atributos. *(Conserva el nombre `motos.py` y el dict `motos` por compatibilidad; el motor es genérico.)* |
+| `logica.py` | Reglas del juego: evaluar preguntas, descartar candidatos, validar |
+| `protocolo.py` | Tipos de mensaje y envío/recepción JSON |
 
-## Las 24 motos del tablero
+### Modo web (principal) — carpeta `web/`
+| Archivo | Descripción |
+|---------|-------------|
+| `web/servidor_web.py` | Servidor HTTP + WebSocket. Hilo principal hace `accept()`; un hilo por conexión. Sirve la página, `/api/motos`, `/api/avatares` y `/monitor` |
+| `web/ws.py` | WebSocket **a mano** sobre `socket` crudo (handshake + framing) |
+| `web/salas.py` | `GestorSalas` (cola pública/rápida y salas privadas, protegido con `Lock`) y `GameRoom` (una partida = un hilo). Registro de partidas activas para el monitor |
+| `web/bot.py` | Bot que usa `logica.py`; dificultad fácil / normal / difícil |
+| `web/static/` | `index.html`, `style.css`, `app.js`, `i18n.js` (es/en), `monitor.html`, `sounds/` |
+| `web/procesar_cartoon.py`, `web/procesar_lote.py` | Utilidades que recortan el fondo de las caricaturas (transparente) y las normalizan |
 
-**4 motos por origen** (6 orígenes × 4 = 24). Los valores se basan en datos reales
-del modelo de referencia. Atributos (los que se usan para preguntar):
+### Modo clásico (respaldo)
+| Archivo | Descripción |
+|---------|-------------|
+| `server.py` | Servidor TCP multihilo (`WaitingRoom` + `Lock`, `GameSession` por partida) + autodescubrimiento UDP |
+| `gui_client.py` | Cliente gráfico Tkinter |
 
-- **origen** — japonesa / americana / italiana / inglesa / alemana / austriaca
-- **estilo** — deportiva / naked / cruiser / touring / trail / enduro
-- **cilindrada** — baja (`<500cc`) / media (`500-999cc`) / alta (`≥1000cc`)
-- **era** — clasica_pre1990 / noventas / moderna_post2000
-- **cilindros** — 1 / 2 / 3 / 4_o_mas
-- **refrigeracion** — aire / liquida
-- **famosa_en_cine** — si / no
+## Los 24 jugadores del tablero
 
-| # | Moto | origen | estilo | cilindrada | era | cilindros | refrig. | cine |
-|---|------|--------|--------|------------|-----|-----------|---------|------|
-| 1 | Honda CBR 600RR | japonesa | deportiva | media | moderna_post2000 | 4_o_mas | liquida | no |
-| 2 | Kawasaki Ninja H2 | japonesa | deportiva | media | moderna_post2000 | 4_o_mas | liquida | no |
-| 3 | Yamaha YZF-R1 | japonesa | deportiva | media | noventas | 4_o_mas | liquida | si |
-| 4 | Suzuki Hayabusa | japonesa | deportiva | alta | noventas | 4_o_mas | liquida | si |
-| 5 | Harley-Davidson Fat Boy | americana | cruiser | alta | noventas | 2 | aire | si |
-| 6 | Harley-Davidson Sportster | americana | cruiser | media | clasica_pre1990 | 2 | aire | no |
-| 7 | Indian Chief | americana | cruiser | alta | clasica_pre1990 | 2 | aire | no |
-| 8 | Harley-Davidson Road King | americana | touring | alta | noventas | 2 | aire | no |
-| 9 | Ducati Panigale V4 | italiana | deportiva | alta | moderna_post2000 | 4_o_mas | liquida | no |
-| 10 | Ducati Monster | italiana | naked | media | moderna_post2000 | 2 | liquida | no |
-| 11 | Aprilia RSV4 | italiana | deportiva | alta | moderna_post2000 | 4_o_mas | liquida | no |
-| 12 | Ducati Multistrada | italiana | trail | alta | moderna_post2000 | 2 | liquida | no |
-| 13 | Triumph Bonneville | inglesa | naked | media | clasica_pre1990 | 2 | aire | si |
-| 14 | Triumph Speed Triple | inglesa | naked | alta | noventas | 3 | liquida | si |
-| 15 | Triumph Rocket 3 | inglesa | cruiser | alta | moderna_post2000 | 3 | liquida | no |
-| 16 | Triumph Tiger | inglesa | trail | media | moderna_post2000 | 3 | liquida | no |
-| 17 | BMW R 1250 GS | alemana | trail | alta | moderna_post2000 | 2 | liquida | no |
-| 18 | BMW S1000RR | alemana | deportiva | media | moderna_post2000 | 4_o_mas | liquida | no |
-| 19 | BMW R nineT | alemana | naked | alta | moderna_post2000 | 2 | aire | no |
-| 20 | BMW K 1600 | alemana | touring | alta | moderna_post2000 | 4_o_mas | liquida | no |
-| 21 | KTM 1290 Super Duke | austriaca | naked | alta | moderna_post2000 | 2 | liquida | no |
-| 22 | KTM 1290 Super Adventure | austriaca | trail | alta | moderna_post2000 | 2 | liquida | no |
-| 23 | KTM RC 390 | austriaca | deportiva | baja | moderna_post2000 | 1 | liquida | no |
-| 24 | KTM 690 Enduro | austriaca | enduro | media | moderna_post2000 | 1 | liquida | no |
+Atributos (los que se usan para preguntar):
 
-## Flujo del juego
+- **posicion** — portero / defensa / mediocampista / delantero
+- **confederacion** — uefa / conmebol
+- **pie** — derecho / izquierdo
+- **era** — leyenda / dosmil / actual
+- **gano_mundial** — si / no
+- **gano_balon_oro** — si / no
+- **liga** (más representativa) — laliga / seriea / bundesliga / premier / ligue1 / otra
 
-1. El servidor arranca, escucha TCP en `0.0.0.0:5000` y responde al
-   autodescubrimiento UDP (puerto 5001).
-2. Cada jugador abre el cliente: en el **lobby** escribe su **nombre** y elige un
-   **avatar**, y pulsa **JUGAR**. El cliente **busca el servidor solo** por
-   broadcast UDP (no se escribe IP ni puerto).
-3. Al haber dos jugadores, el servidor empareja, asigna a cada uno una moto
-   secreta distinta y envía el mismo tablero (24 motos en orden aleatorio).
-4. Los jugadores se turnan enviando preguntas de sí/no sobre los atributos.
-5. El servidor evalúa cada pregunta contra la moto rival y responde a ambos.
-6. Quien adivina la moto del rival gana (fallar al adivinar hace perder).
-7. Al terminar la ronda se ofrece **revancha**; si ambos aceptan, se juega otra
-   ronda y se lleva el **marcador** de partidas ganadas.
+| # | Jugador | posición | conf. | pie | era | Mundial | B.Oro | liga |
+|---|---------|----------|-------|-----|-----|:---:|:---:|------|
+| 1 | Gianluigi Buffon | portero | uefa | derecho | dosmil | si | no | seriea |
+| 2 | Iker Casillas | portero | uefa | derecho | actual | si | no | laliga |
+| 3 | Manuel Neuer | portero | uefa | derecho | actual | si | no | bundesliga |
+| 4 | Sergio Ramos | defensa | uefa | derecho | actual | si | no | laliga |
+| 5 | Paolo Maldini | defensa | uefa | izquierdo | leyenda | no | no | seriea |
+| 6 | Franz Beckenbauer | defensa | uefa | derecho | leyenda | si | si | bundesliga |
+| 7 | Roberto Carlos | defensa | conmebol | izquierdo | dosmil | si | no | laliga |
+| 8 | Fabio Cannavaro | defensa | uefa | derecho | dosmil | si | si | seriea |
+| 9 | Zinedine Zidane | mediocampista | uefa | derecho | dosmil | si | si | laliga |
+| 10 | Andrés Iniesta | mediocampista | uefa | derecho | actual | si | no | laliga |
+| 11 | Xavi Hernández | mediocampista | uefa | derecho | actual | si | no | laliga |
+| 12 | Luka Modrić | mediocampista | uefa | derecho | actual | no | si | laliga |
+| 13 | Kevin De Bruyne | mediocampista | uefa | derecho | actual | no | no | premier |
+| 14 | Michel Platini | mediocampista | uefa | derecho | leyenda | no | si | seriea |
+| 15 | Kaká | mediocampista | conmebol | derecho | dosmil | si | si | seriea |
+| 16 | Andrea Pirlo | mediocampista | uefa | derecho | dosmil | si | no | seriea |
+| 17 | Lionel Messi | delantero | conmebol | izquierdo | actual | si | si | laliga |
+| 18 | Cristiano Ronaldo | delantero | uefa | derecho | actual | no | si | laliga |
+| 19 | Pelé | delantero | conmebol | derecho | leyenda | si | no | otra |
+| 20 | Diego Maradona | delantero | conmebol | izquierdo | leyenda | si | no | seriea |
+| 21 | Ronaldo Nazário | delantero | conmebol | derecho | dosmil | si | si | laliga |
+| 22 | Ronaldinho | delantero | conmebol | derecho | dosmil | si | si | laliga |
+| 23 | Kylian Mbappé | delantero | uefa | derecho | actual | si | no | ligue1 |
+| 24 | Robert Lewandowski | delantero | uefa | derecho | actual | no | no | bundesliga |
 
-## Conexión y autodescubrimiento
+## Flujo del juego (web)
 
-- El menú de inicio **no pide host ni puerto**: solo nombre y avatar.
-- El cliente encuentra el servidor en la **red local** mediante un *broadcast UDP*
-  (`protocolo.descubrir_servidor`); el servidor responde con su puerto y el cliente
-  deduce la IP. Funciona entre PCs distintas en la misma red y también en una sola
-  máquina (se prueba localhost además del broadcast).
-- El avatar es **local** (perfil personal): el rival ve tu **nombre**, no tu avatar.
+1. El servidor escucha en `0.0.0.0:$PORT` (HTTP + WebSocket) y sirve la página.
+2. En la **landing** el jugador ve cómo se juega, las reglas y la galería; pulsa
+   **Jugar**, escribe su **nombre**, elige **avatar** (entrenador) y un **modo**:
+   pública, privada (código + QR), partida rápida (reloj 30 s) o **vs Bot**.
+3. Al emparejar, el servidor asigna a cada uno un jugador secreto distinto y envía
+   el mismo tablero (24 fichas en orden aleatorio).
+4. Por turnos se envían preguntas sí/no sobre los atributos; el servidor evalúa
+   contra el jugador rival y responde a ambos. El tablero **tacha solo** los
+   imposibles. Hay **chat** y **emojis** entre jugadores.
+5. Quien adivina al rival gana (fallar hace perder). Al final hay **revancha** y
+   se lleva el **marcador** de la sesión.
+
+## Modos de juego y rutas
+
+- **Modos:** pública · privada (código propio + QR) · partida rápida (reloj 30 s,
+  al agotarse se pierde el turno) · vs Bot (dificultad fácil/normal/difícil).
+- **`/monitor`** — panel en vivo (por WebSocket) que muestra partidas activas
+  (hilos `GameRoom`), jugadores en cola (`Lock`) y conexiones. Hace **visible la
+  concurrencia**; ideal para la sustentación.
+
+## Despliegue
+
+- Desplegado en **Render** (plan gratis): https://adivina-la-moto.onrender.com
+- Repo: https://github.com/SebastianQ7/adivina-la-moto (rama `main`).
+- Render está conectado a otra cuenta de GitHub, así que **no hay auto-deploy**:
+  tras un `push` hay que hacer **Manual Deploy → Deploy latest commit** en Render.
+- El servidor lee el puerto de la variable de entorno `PORT` y escucha en `0.0.0.0`.
 
 ## Notas de desarrollo
 
-- Los avatares PNG viven en `imagenes/avatares/`. Se regeneran con
-  `python generar_avatares.py` y se pueden reemplazar por otros PNG.
-- Mensajes JSON UTF-8 delimitados por `\n` sobre TCP (ver `protocolo.py`).
+- Las imágenes de los jugadores son `imagenes/<slug>.png` (caricaturas con fondo
+  transparente). Los avatares (entrenadores) están en `imagenes/avatares/`.
+- Las caricaturas originales sin procesar van en `imagenes/cartoon_raw/`
+  (ignoradas por git). Se procesan con `python web/procesar_lote.py`.
+- Para correr en local: `python web/servidor_web.py` → http://localhost:8000
+- Mensajes JSON UTF-8; en el modo clásico van delimitados por `\n` sobre TCP.

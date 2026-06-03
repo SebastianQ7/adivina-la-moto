@@ -1,269 +1,219 @@
-# Adivina Quién — Motos 🏍️
+# Adivina el Crack ⚽
 
 Implementación cliente-servidor del clásico juego de mesa **Adivina Quién**, donde
-en lugar de personajes con caras, el tablero usa **24 motos icónicas reales**.
+en lugar de personajes con caras, el tablero usa **24 futbolistas icónicos** (en
+caricatura).
 
 Proyecto para la materia **Programación Distribuida y Paralela** del
 **Politécnico Colombiano Jaime Isaza Cadavid**.
+
+🌐 **En vivo:** https://adivina-la-moto.onrender.com · 📡 **Monitor:** https://adivina-la-moto.onrender.com/monitor
 
 ---
 
 ## 📋 Descripción
 
-Dos jugadores se conectan a un servidor. A cada uno se le asigna en secreto una
-moto del tablero. Por turnos, hacen **preguntas de sí/no** sobre los atributos de
-las motos (origen, estilo, cilindrada, etc.) para ir descartando candidatas. Gana
-quien **adivine primero** la moto secreta del rival. Ojo: **fallar una adivinanza
+Dos jugadores se conectan a un servidor. A cada uno se le asigna en secreto un
+**jugador** del tablero. Por turnos hacen **preguntas de sí/no** sobre los atributos
+(posición, confederación, pie hábil, etc.) para ir descartando candidatos. Gana
+quien **adivine primero** al jugador secreto del rival. Ojo: **fallar una adivinanza
 hace perder de inmediato** (regla clásica).
 
-El proyecto cumple el requisito obligatorio de la materia de usar **hilos
-(`threading`)** y **sockets (`socket`)** de la biblioteca estándar de Python.
+Hay **dos frontends sobre el mismo motor**:
+- **Web** (principal): navegador y móvil, desplegable en internet.
+- **Clásico** (respaldo): cliente gráfico de escritorio en Tkinter.
+
+El proyecto cumple el requisito obligatorio de usar **hilos (`threading`)** y
+**sockets (`socket`)** de la biblioteca estándar de Python.
 
 ---
 
-## 🏗️ Arquitectura
+## 🧵 Modelo de concurrencia (lo que valora el profesor)
 
-```
-                       ┌────────────────────────────────────────────┐
-                       │                 SERVER.PY                    │
-                       │                                              │
-   ┌────────────┐ TCP  │   ┌────────────────────────────────────┐   │
-   │ CLIENT.PY  │◄────►│   │  Hilo principal (accept loop)       │   │
-   │ Jugador 1  │      │   │  socket.accept() ──► nuevo hilo     │   │
-   │ ┌────────┐ │      │   └────────────────────────────────────┘   │
-   │ │hilo RX │ │      │            │                  │             │
-   │ │(red)   │ │      │            ▼                  ▼             │
-   │ ├────────┤ │      │   ┌──────────────┐   ┌──────────────┐      │
-   │ │hilo    │ │      │   │ hilo handshake│  │ hilo handshake│     │
-   │ │teclado │ │      │   │  (espera JOIN)│  │  (espera JOIN)│     │
-   │ └────────┘ │      │   └──────┬───────┘   └──────┬───────┘      │
-   └────────────┘      │          │                  │              │
-                       │          ▼                  ▼              │
-   ┌────────────┐ TCP  │   ┌────────────────────────────────────┐  │
-   │ CLIENT.PY  │◄────►│   │   WaitingRoom (cola + threading.Lock)│ │
-   │ Jugador 2  │      │   └────────────────┬───────────────────┘  │
-   │ ┌────────┐ │      │                    │ empareja             │
-   │ │hilo RX │ │      │                    ▼                       │
-   │ │hilo TX │ │      │   ┌────────────────────────────────────┐  │
-   │ └────────┘ │      │   │ GameSession (threading.Thread)      │  │
-   └────────────┘      │   │  · una partida = un hilo            │  │
-                       │   │  · tablero + motos secretas + turno │  │
-   ┌────────────┐ TCP  │   └────────────────────────────────────┘  │
-   │ CLIENT.PY  │◄────►│              ▲                              │
-   │ Jugador 3  │      │              │ usa los datos               │
-   │ (en espera)│      │      ┌───────────────┐                     │
-   └────────────┘      │      │   MOTOS.PY    │ (24 motos, sin red) │
-                       │      └───────────────┘                     │
-                       │      ┌───────────────┐                     │
-                       │      │  PROTOCOLO.PY │ (mensajes JSON)      │
-                       │      └───────────────┘                     │
-                       └────────────────────────────────────────────┘
-
-Protocolo: mensajes JSON UTF-8 delimitados por '\n' sobre TCP.
-```
-
-**Modelo de concurrencia (lo que valora el profesor):**
+Tanto el modo web como el clásico usan el **mismo modelo**:
 
 - El **hilo principal** del servidor solo hace `accept()` (operación bloqueante).
-- Cada **conexión** entrante se atiende en **su propio hilo de handshake**, para que
-  un cliente lento no congele la aceptación de los demás.
-- Cada **partida** corre en **su propio hilo** (`GameSession`), de modo que varias
-  partidas avanzan en paralelo sin estorbarse. El estado de cada partida es privado
-  del hilo, así que no requiere sincronización.
-- La **sala de espera** (`WaitingRoom`) es estado **compartido** entre los hilos de
-  handshake, por eso se protege con un **`threading.Lock`** (evita condiciones de
-  carrera al emparejar).
-- El **cliente gráfico** usa un **hilo de red** que recibe los mensajes (`recv`,
-  bloqueante) y los deja en una `queue.Queue`; la ventana (Tkinter) los consume con
-  `root.after()`. Así la interfaz nunca se congela y se actualiza de forma segura
-  (Tkinter **no** es seguro entre hilos).
-- El **servidor** además lanza un **hilo de autodescubrimiento UDP** que responde a
-  los *broadcast* de los clientes para que estos encuentren su IP sin configurarla.
+- Cada **conexión** entrante se atiende en **su propio hilo**, para que un cliente
+  lento no congele la aceptación de los demás.
+- Cada **partida** corre en **su propio hilo** (`GameSession` / `GameRoom`), de modo
+  que varias partidas avanzan **en paralelo** sin estorbarse. El estado de cada
+  partida es privado del hilo.
+- La **cola de emparejamiento** (`WaitingRoom` / `GestorSalas`) es estado
+  **compartido** entre hilos, por eso se protege con un **`threading.Lock`** (evita
+  condiciones de carrera al emparejar).
+- En el modo web, el **WebSocket está hecho a mano** sobre el módulo `socket`
+  (handshake + framing), sin librerías: así el uso de sockets queda **a la vista**.
+- La página **`/monitor`** transmite por WebSocket, desde un hilo dedicado, cuántas
+  partidas (hilos) están activas, cuántos jugadores hay en cola (`Lock`) y cuántas
+  conexiones existen: **hace visible la concurrencia** en tiempo real.
+
+---
+
+## 🏗️ Arquitectura (modo web)
+
+```
+   Navegador (HTML/CSS/JS)                 ┌──────────────── servidor_web.py ───────────────┐
+   · landing, lobby, tablero               │  Hilo principal:  socket.accept()  ──► 1 hilo  │
+   · chat · emojis · /monitor              │                                      por conexión│
+        │            ▲                      │        │                  │                      │
+        │ WebSocket  │ WebSocket            │        ▼                  ▼                      │
+        ▼            │                      │   ws.py (WebSocket a mano sobre socket)          │
+   ┌─────────┐   ┌─────────┐                │        │                  │                      │
+   │Jugador 1│   │Jugador 2│  ───────────►  │   GestorSalas (cola + threading.Lock)            │
+   └─────────┘   └─────────┘                │        │ empareja                                 │
+                                            │        ▼                                          │
+                                            │   GameRoom (threading.Thread) · 1 partida=1 hilo  │
+                                            │        │ usa                                      │
+                                            │   logica.py + motos.py  (reglas puras)            │
+                                            └──────────────────────────────────────────────────┘
+```
 
 ---
 
 ## ⚙️ Requisitos técnicos
 
-- **Python 3.7+** (se usa `socket.sendall`, f-strings y `dict` ordenado).
-- **Solo biblioteca estándar**: `socket`, `threading`, `json`, `random`, `sys`.
-- No requiere instalar dependencias externas.
+- **Python 3.7+** — **solo biblioteca estándar** (`socket`, `threading`, `json`…).
+- Sin dependencias externas para correr el juego.
+- *(Solo para regenerar las caricaturas se usa Pillow; no hace falta para jugar.)*
 
 ---
 
-## ▶️ Instrucciones de ejecución (paso a paso)
+## ▶️ Cómo ejecutar
 
-El juego es **gráfico** (Tkinter). La forma más fácil:
-
-**Opción A — un solo clic:** ejecuta **`iniciar_juego_grafico.bat`**. Abre el
-servidor y las dos ventanas de los jugadores automáticamente.
-
-**Opción B — manual** (una terminal por proceso, en la carpeta del proyecto):
+### Modo web (principal)
 ```bash
-python server.py     # 1) servidor (TCP 0.0.0.0:5000 + autodescubrimiento UDP)
-python gui_client.py # 2) ventana del jugador 1
-python gui_client.py # 3) ventana del jugador 2
+python web/servidor_web.py        # http://localhost:8000  (y /monitor)
 ```
-En cada ventana aparece el **lobby**: escribe tu **nombre**, elige un **avatar** y
-pulsa **JUGAR**. El cliente **encuentra el servidor solo** (no se escribe IP ni
-puerto). En cuanto los dos pulsan JUGAR, **la partida arranca automáticamente**.
+Abre **http://localhost:8000** en el navegador. En la **landing** verás cómo se
+juega, las reglas y la galería; pulsa **Jugar**, escribe tu nombre, elige avatar y
+un modo. Para jugar de a dos: abre la página en dos dispositivos/pestañas, o usa el
+modo **vs Bot** para jugar solo.
 
-**Jugar en dos computadores distintos (red local):** no hay que configurar nada.
-Levanta `server.py` en un equipo y abre `gui_client.py` en cada PC: el
-**autodescubrimiento por UDP** localiza el servidor en la red. Solo deben estar en
-la **misma red local** (si el firewall pregunta, permite el acceso a Python).
-
-> **Modo directo (opcional, para pruebas):**
-> `python gui_client.py <nombre> [host] [puerto]` se salta el lobby y conecta a esa
-> dirección. Sin argumentos, usa el lobby con autodescubrimiento.
-
-**Cómo se juega (en la ventana):**
-
-| Acción | Cómo |
-|--------|------|
-| Preguntar | Elige **atributo** y **valor** en los menús y pulsa **Preguntar** |
-| Adivinar | Selecciona una carta (clic) y pulsa **Adivinar la seleccionada** |
-| Descartar / recuperar una carta | **Doble clic** sobre la carta |
-| Ver de quién es el turno | Indicador de color en el panel derecho |
+### Modo clásico (respaldo, escritorio)
+```bash
+python server.py                  # TCP 0.0.0.0:5000 + autodescubrimiento UDP
+python gui_client.py              # ventana del jugador 1
+python gui_client.py              # ventana del jugador 2
+```
 
 ---
 
-## 📁 Descripción de cada archivo
+## 🌐 Despliegue (Render)
+
+- Desplegado en **Render** (plan gratis): el servidor lee el puerto de la variable
+  `PORT` y escucha en `0.0.0.0`; sirve HTTP + WebSocket por ese único puerto.
+- Repo: **https://github.com/SebastianQ7/adivina-la-moto** (rama `main`).
+- Render está conectado a otra cuenta de GitHub, por lo que **no hay auto-deploy**:
+  tras un `push` se hace **Manual Deploy → Deploy latest commit** en Render.
+- El plan gratis "duerme" tras ~15 min de inactividad; la primera carga tras dormir
+  tarda ~40 s (conviene abrir la URL unos minutos antes de usarla).
+
+---
+
+## 🎮 Modos de juego
+
+| Modo | Descripción |
+|------|-------------|
+| **Pública** | Te empareja con el siguiente que busque rival. |
+| **Privada** | Creas con tu **código** → se genera un **QR**; el otro entra con código o QR. |
+| **Rápida** | Con **reloj de 30 s** por turno; si se agota, pierdes el turno (no la partida). |
+| **vs Bot** | Juegas solo contra la máquina (dificultad **fácil / normal / difícil**). |
+
+Extras: **chat de texto** y **emojis** entre jugadores, tablero que **tacha solo**
+los imposibles, **revancha**, **marcador** de la sesión y **multi-idioma (es/en)**.
+
+---
+
+## 📁 Descripción de los archivos
+
+**Núcleo compartido (sin red ni hilos):**
 
 | Archivo | Responsabilidad |
 |---------|-----------------|
-| **`motos.py`** | Base de datos de las 24 motos (diccionario `motos`) con sus 7 atributos, la lista `ATRIBUTOS` y `tabla_balanceo()`. Sin red ni hilos. |
-| **`logica.py`** | Reglas **puras** del juego (sin red ni hilos): validar atributo/personaje, responder SI/NO y eliminar candidatos. Reutilizada por servidor y cliente. |
-| **`protocolo.py`** | Capa de comunicación **compartida**: tipos de mensaje, `crear()`, `enviar()` (JSON + `\n`) y la clase `Receptor` (reconstruye mensajes del flujo TCP). |
-| **`server.py`** | Servidor multihilo. Clases `Jugador`, `WaitingRoom` (cola con `Lock`) y `GameSession` (`threading.Thread`, una partida por hilo, con un hilo lector por jugador). |
-| **`gui_client.py`** | Cliente **gráfico** (Tkinter): lobby (nombre + avatar), tablero de cartas, controles e historial. Hilo de red + `queue.Queue` para actualizar la UI con seguridad. |
-| **`generar_avatares.py`** | Utilidad que genera los avatares PNG del lobby en `imagenes/avatares/` (solo biblioteca estándar). |
-| **`imagenes/`** | Las 24 imágenes PNG de las motos (con respaldo si falta alguna) y la subcarpeta `avatares/` con los avatares del lobby. |
-| **`iniciar_juego_grafico.bat`** | Lanzador: abre servidor + 2 ventanas de un clic. |
-| **`tests/`** | Pruebas con `unittest` (datos, lógica y protocolo). |
-| **`README.md` / `CLAUDE.md`** | Documentación y contexto del proyecto. |
+| `motos.py` | Datos de los 24 jugadores y sus 7 atributos. *(Conserva el nombre `motos`/`motos.py` por compatibilidad; el motor es genérico.)* |
+| `logica.py` | Reglas **puras**: validar, responder SÍ/NO, descartar candidatos. |
+| `protocolo.py` | Tipos de mensaje y envío/recepción JSON. |
+
+**Modo web (`web/`):**
+
+| Archivo | Responsabilidad |
+|---------|-----------------|
+| `web/servidor_web.py` | Servidor HTTP + WebSocket (accept en hilo principal, un hilo por conexión). Sirve la página, `/api/motos`, `/api/avatares` y `/monitor`. |
+| `web/ws.py` | WebSocket **a mano** sobre `socket` crudo (handshake + framing). |
+| `web/salas.py` | `GestorSalas` (cola con `Lock`, salas privadas) y `GameRoom` (una partida = un hilo); registro de partidas activas. |
+| `web/bot.py` | Bot que usa `logica.py`; dificultad fácil/normal/difícil. |
+| `web/static/` | `index.html`, `style.css`, `app.js`, `i18n.js`, `monitor.html`, `sounds/`. |
+| `web/procesar_cartoon.py`, `web/procesar_lote.py` | Recortan el fondo de las caricaturas (transparente) y las normalizan. |
+
+**Modo clásico:**
+
+| Archivo | Responsabilidad |
+|---------|-----------------|
+| `server.py` | Servidor TCP multihilo (`WaitingRoom`+`Lock`, `GameSession`) + autodescubrimiento UDP. |
+| `gui_client.py` | Cliente gráfico Tkinter (hilo de red + `queue.Queue` para actualizar la UI). |
+| `imagenes/` | Caricaturas `<slug>.png` de los jugadores y `avatares/` (entrenadores). |
+| `tests/` | Pruebas con `unittest` (datos, lógica y protocolo). |
 
 ---
 
-## 📡 Resumen del protocolo
+## 📡 Resumen del protocolo (web)
 
-Cada mensaje es un objeto **JSON UTF-8 terminado en `\n`**, con una clave `tipo`.
+Mensajes JSON con una clave `tipo`, sobre WebSocket.
 
-### Cliente → Servidor
+**Cliente → Servidor:** `JOIN` (nombre, modo, código, rápida, dificultad) ·
+`PREGUNTA` (atributo, valor) · `ADIVINAR` (moto) · `DESCARTAR` · `EMOJI` ·
+`CHAT` (texto) · `RENDIRSE` · `REVANCHA` · `SALIR` · `MONITOR` (abre el panel).
 
-| `tipo` | Cuándo | Estructura |
-|--------|--------|------------|
-| `JOIN` | Al conectarse | `{tipo, nombre}` |
-| `PREGUNTA` | En su turno | `{tipo, atributo, valor}` |
-| `ADIVINAR` | En su turno | `{tipo, moto}` |
-| `DESCARTAR` | Al descartar una ficha | `{tipo, moto}` |
-| `REVANCHA` | Al terminar una ronda, para pedir otra | `{tipo}` |
-| `SALIR` | Al abandonar | `{tipo}` |
+**Servidor → Cliente:** `ESPERANDO` (msg, código) · `INICIO` (tu_moto, tablero,
+tu_turno, rival, marcador, reloj) · `TURNO` · `RESPUESTA` · `EMOJI` · `CHAT` ·
+`FIN` (ganaste, moto_rival, marcador, revancha) · `ERROR` · `STATS` (al monitor).
 
-### Servidor → Cliente
-
-| `tipo` | Cuándo | Estructura |
-|--------|--------|------------|
-| `ESPERANDO` | Aún no hay rival | `{tipo, msg}` |
-| `INICIO` | Al emparejar / cada ronda | `{tipo, tu_moto, tablero, tu_turno, rival, marcador}` |
-| `TURNO` | Al alternar turno | `{tipo, tu_turno}` |
-| `RESPUESTA` | Tras una pregunta (a ambos) | `{tipo, quien, atributo, valor, pregunta, respuesta}` |
-| `FIN` | Adivinanza / abandono / desconexión | `{tipo, ganaste, moto_rival, msg, marcador, revancha}` |
-| `ERROR` | Mensaje inválido | `{tipo, msg}` |
-
-> **Nota sobre TCP:** se usa el terminador `\n` porque TCP entrega un *flujo* de
-> bytes sin fronteras de mensaje; la clase `Receptor` acumula en un buffer y corta
-> cada mensaje al encontrar el `\n` (framing).
-
-> **Autodescubrimiento (UDP):** aparte del juego (TCP), el servidor escucha un
-> *broadcast* UDP en el puerto **5001**. El cliente envía `ADIVINA_QUIEN_DISCOVERY?`,
-> el servidor responde con su puerto TCP y el cliente deduce la IP del origen del
-> paquete. Así no hace falta escribir la IP del servidor.
+> En el modo clásico (TCP) los mensajes van delimitados por `\n` (framing en
+> `protocolo.Receptor`), y hay autodescubrimiento por *broadcast* UDP.
 
 ---
 
-## 🏍️ Las 24 motos del tablero
+## ⚽ Los 24 jugadores del tablero
 
-Atributos: **origen** (japonesa/americana/italiana/inglesa/alemana/austriaca),
-**estilo** (deportiva/naked/cruiser/touring/trail/enduro),
-**cilindrada** (baja `<500cc` / media `500-999cc` / alta `≥1000cc`),
-**era** (clasica_pre1990 / noventas / moderna_post2000),
-**cilindros** (1/2/3/4_o_mas), **refrigeracion** (aire/liquida),
-**famosa_en_cine** (si/no).
+Atributos: **posicion** (portero/defensa/mediocampista/delantero),
+**confederacion** (uefa/conmebol), **pie** (derecho/izquierdo),
+**era** (leyenda/dosmil/actual), **gano_mundial** (si/no),
+**gano_balon_oro** (si/no), **liga** (laliga/seriea/bundesliga/premier/ligue1/otra).
 
-| # | Moto | origen | estilo | cilindrada | era | cilindros | refrigeracion | cine |
-|---|------|--------|--------|------------|-----|-----------|---------------|------|
-| 1 | Honda CBR 600RR | japonesa | deportiva | media | moderna_post2000 | 4_o_mas | liquida | no |
-| 2 | Kawasaki Ninja H2 | japonesa | deportiva | media | moderna_post2000 | 4_o_mas | liquida | no |
-| 3 | Yamaha YZF-R1 | japonesa | deportiva | media | noventas | 4_o_mas | liquida | si |
-| 4 | Suzuki Hayabusa | japonesa | deportiva | alta | noventas | 4_o_mas | liquida | si |
-| 5 | Harley-Davidson Fat Boy | americana | cruiser | alta | noventas | 2 | aire | si |
-| 6 | Harley-Davidson Sportster | americana | cruiser | media | clasica_pre1990 | 2 | aire | no |
-| 7 | Indian Chief | americana | cruiser | alta | clasica_pre1990 | 2 | aire | no |
-| 8 | Harley-Davidson Road King | americana | touring | alta | noventas | 2 | aire | no |
-| 9 | Ducati Panigale V4 | italiana | deportiva | alta | moderna_post2000 | 4_o_mas | liquida | no |
-| 10 | Ducati Monster | italiana | naked | media | moderna_post2000 | 2 | liquida | no |
-| 11 | Aprilia RSV4 | italiana | deportiva | alta | moderna_post2000 | 4_o_mas | liquida | no |
-| 12 | Ducati Multistrada | italiana | trail | alta | moderna_post2000 | 2 | liquida | no |
-| 13 | Triumph Bonneville | inglesa | naked | media | clasica_pre1990 | 2 | aire | si |
-| 14 | Triumph Speed Triple | inglesa | naked | alta | noventas | 3 | liquida | si |
-| 15 | Triumph Rocket 3 | inglesa | cruiser | alta | moderna_post2000 | 3 | liquida | no |
-| 16 | Triumph Tiger | inglesa | trail | media | moderna_post2000 | 3 | liquida | no |
-| 17 | BMW R 1250 GS | alemana | trail | alta | moderna_post2000 | 2 | liquida | no |
-| 18 | BMW S1000RR | alemana | deportiva | media | moderna_post2000 | 4_o_mas | liquida | no |
-| 19 | BMW R nineT | alemana | naked | alta | moderna_post2000 | 2 | aire | no |
-| 20 | BMW K 1600 | alemana | touring | alta | moderna_post2000 | 4_o_mas | liquida | no |
-| 21 | KTM 1290 Super Duke | austriaca | naked | alta | moderna_post2000 | 2 | liquida | no |
-| 22 | KTM 1290 Super Adventure | austriaca | trail | alta | moderna_post2000 | 2 | liquida | no |
-| 23 | KTM RC 390 | austriaca | deportiva | baja | moderna_post2000 | 1 | liquida | no |
-| 24 | KTM 690 Enduro | austriaca | enduro | media | moderna_post2000 | 1 | liquida | no |
+| # | Jugador | posición | conf. | pie | era | Mundial | B.Oro | liga |
+|---|---------|----------|-------|-----|-----|:---:|:---:|------|
+| 1 | Gianluigi Buffon | portero | uefa | derecho | dosmil | si | no | seriea |
+| 2 | Iker Casillas | portero | uefa | derecho | actual | si | no | laliga |
+| 3 | Manuel Neuer | portero | uefa | derecho | actual | si | no | bundesliga |
+| 4 | Sergio Ramos | defensa | uefa | derecho | actual | si | no | laliga |
+| 5 | Paolo Maldini | defensa | uefa | izquierdo | leyenda | no | no | seriea |
+| 6 | Franz Beckenbauer | defensa | uefa | derecho | leyenda | si | si | bundesliga |
+| 7 | Roberto Carlos | defensa | conmebol | izquierdo | dosmil | si | no | laliga |
+| 8 | Fabio Cannavaro | defensa | uefa | derecho | dosmil | si | si | seriea |
+| 9 | Zinedine Zidane | mediocampista | uefa | derecho | dosmil | si | si | laliga |
+| 10 | Andrés Iniesta | mediocampista | uefa | derecho | actual | si | no | laliga |
+| 11 | Xavi Hernández | mediocampista | uefa | derecho | actual | si | no | laliga |
+| 12 | Luka Modrić | mediocampista | uefa | derecho | actual | no | si | laliga |
+| 13 | Kevin De Bruyne | mediocampista | uefa | derecho | actual | no | no | premier |
+| 14 | Michel Platini | mediocampista | uefa | derecho | leyenda | no | si | seriea |
+| 15 | Kaká | mediocampista | conmebol | derecho | dosmil | si | si | seriea |
+| 16 | Andrea Pirlo | mediocampista | uefa | derecho | dosmil | si | no | seriea |
+| 17 | Lionel Messi | delantero | conmebol | izquierdo | actual | si | si | laliga |
+| 18 | Cristiano Ronaldo | delantero | uefa | derecho | actual | no | si | laliga |
+| 19 | Pelé | delantero | conmebol | derecho | leyenda | si | no | otra |
+| 20 | Diego Maradona | delantero | conmebol | izquierdo | leyenda | si | no | seriea |
+| 21 | Ronaldo Nazário | delantero | conmebol | derecho | dosmil | si | si | laliga |
+| 22 | Ronaldinho | delantero | conmebol | derecho | dosmil | si | si | laliga |
+| 23 | Kylian Mbappé | delantero | uefa | derecho | actual | si | no | ligue1 |
+| 24 | Robert Lewandowski | delantero | uefa | derecho | actual | no | no | bundesliga |
 
-> Son **4 motos por origen** (6 orígenes × 4 = 24). Los valores se basan en datos
-> reales del modelo de referencia.
-
----
-
-## 🎬 Ejemplo de partida
-
-Supongamos que a **Ana** le toca la `Aprilia RSV4` y a **Beto** la `BMW K 1600`.
-Ana empieza (su moto la adivina Beto; Ana debe adivinar la de Beto):
-
-```
-============================================================
-  PARTIDA INICIADA  -  Tu rival: Beto
-  TU MOTO SECRETA (la que el rival debe adivinar): Aprilia RSV4
-============================================================
->>> ES TU TURNO.
-
-> origen alemana
-[RESPUESTA] Preguntaste: ¿origen = alemana?  ->  SI
-  TABLERO  (quedan 4/24 posibles)     # solo quedan las 4 alemanas
-
-... Turno del rival. Espera tu turno.
-[RESPUESTA] Beto preguntó: ¿refrigeracion = aire?  ->  NO
-
->>> ES TU TURNO.
-> estilo touring
-[RESPUESTA] Preguntaste: ¿estilo = touring?  ->  SI
-  TABLERO  (quedan 1/24 posibles)     # alemana + touring = BMW K 1600
-
-... (Beto pregunta de nuevo y cede el turno) ...
-
->>> ES TU TURNO.
-> adivinar BMW K 1600
-============================================================
-  FIN DE LA PARTIDA: Ganaste! adivino la moto secreta del rival
-  La moto secreta del rival era: BMW K 1600
-============================================================
-```
-
-Cada pregunta **filtra automáticamente** el tablero local del jugador que la hizo:
-- respuesta **SI** → se descartan las motos que **no** tienen ese valor;
-- respuesta **NO** → se descartan las motos que **sí** lo tienen.
+> La `liga` es la más representativa de su carrera y la `era` es aproximada.
 
 ---
 
 ## 🧪 Pruebas realizadas
 
-El proyecto fue probado de extremo a extremo: partida completa con adivinanza
-correcta, adivinanza fallida (derrota inmediata), tercer cliente en espera, varias
-partidas concurrentes y manejo de desconexiones (si un jugador se cae, gana el rival).
+Probado de extremo a extremo: partida completa con adivinanza correcta y fallida,
+emparejamiento de dos jugadores, salas privadas por código, reloj de la partida
+rápida, chat, emojis, revancha, varias partidas concurrentes (visibles en
+`/monitor`) y manejo de desconexiones (si un jugador se cae, gana el rival).
